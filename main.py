@@ -10,7 +10,7 @@ AI_API_KEY = os.environ.get("AI_API_KEY", "")
 
 SYSTEM_PROMPT = os.environ.get(
     "SYSTEM_PROMPT",
-    "당신은 덕영님의 유능하고 친절한 AI 비서 '피클'입니다. 명확하고 간결하며 예의 바르게 답변하세요."
+    "당신은 덕영님의 유능하고 친절한 AI 비서 '피클'입니다. 텔레그램 메신저 특성에 맞추어 2~4문장으로 핵심만 명확하고 간결하며 예의 바르게 답변하세요. 불필요하게 긴 논문식 답변은 피하세요."
 )
 
 BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
@@ -54,19 +54,41 @@ def call_ai(chat_history):
         url = "https://api.openai.com/v1/chat/completions"
         model = "gpt-4o-mini"
 
+    # 최근 4개 턴만 유지하고 각 메시지 길이 500자로 압축 (Groq 8000 TPM 무료 한도 완벽 방어)
+    safe_history = []
+    for m in chat_history[-4:]:
+        safe_history.append({"role": m["role"], "content": m["content"][:500]})
+
     payload = {
         "model": model,
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + chat_history,
-        "temperature": 0.7
+        "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + safe_history,
+        "temperature": 0.7,
+        "max_tokens": 600
     }
 
     try:
         res = requests.post(url, headers=headers, json=payload, timeout=30)
         res_json = res.json()
-        if "choices" in res_json and len(res_json["choices"]) > 0:
+        if res.status_code == 200 and "choices" in res_json and len(res_json["choices"]) > 0:
             return res_json["choices"][0]["message"]["content"].strip()
-        else:
-            return f"⚠️ AI 응답 오류: {res.text[:150]}"
+        
+        # 413 TPM 한도 오류 발생 시 직전 질문 1개만으로 즉시 자동 복구 재시도
+        if res.status_code == 413 or "too large" in res.text.lower():
+            last_msg = safe_history[-1]["content"] if safe_history else "안녕"
+            retry_payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "핵심만 2문장으로 간결하게 답하세요."},
+                    {"role": "user", "content": last_msg[:300]}
+                ],
+                "max_tokens": 300
+            }
+            retry_res = requests.post(url, headers=headers, json=retry_payload, timeout=15)
+            retry_json = retry_res.json()
+            if retry_res.status_code == 200 and "choices" in retry_json and len(retry_json["choices"]) > 0:
+                return retry_json["choices"][0]["message"]["content"].strip()
+
+        return f"⚠️ AI 응답 오류: {res.text[:150]}"
     except Exception as e:
         return f"⚠️ AI 호출 실패: {str(e)}"
 
@@ -159,7 +181,11 @@ def main():
 
                 ai_reply = call_ai(chat_memories[chat_id])
                 print(f"🤖 [피클 응답]: {ai_reply}", flush=True)
-                chat_memories[chat_id].append({"role": "assistant", "content": ai_reply})
+                if not ai_reply.startswith("⚠️"):
+                    chat_memories[chat_id].append({"role": "assistant", "content": ai_reply})
+                else:
+                    # 오류 발생 시 이전 메모리를 초기화하여 다음 요청이 즉시 정상 복구되도록 조치
+                    chat_memories[chat_id] = []
                 send_message(chat_id, ai_reply, reply_to_message_id=msg_id)
 
         time.sleep(1)
