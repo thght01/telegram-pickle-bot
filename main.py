@@ -215,13 +215,19 @@ class TelegramBotWorker(threading.Thread):
                             if not is_call_other:
                                 should_respond = True
                     else:
-                        # 다른 봇이 말한 경우:
-                        # 뮤즈, 부이 등 제3자 봇의 말에는 끼어들지 않고,
-                        # 오직 파트너 피클(내 남편/아내 피클)이 나를 부르거나 답장했을 때만 2턴 이내로 티키타카
+                        # 다른 봇이 말한 경우
                         is_partner_bot = (from_username == self.counterpart_username)
+                        is_muse = (from_username == "muse_control_bot")
                         cur_turns = consecutive_bot_turns.get(chat_id, 0)
                         
-                        if is_partner_bot and (is_mentioned or is_reply_to_me) and cur_turns < 2:
+                        # 1) 뮤즈가 나(피클/피키)를 부르거나 지시한 경우: 무조건 즉시 응답
+                        if is_muse and (is_mentioned or is_reply_to_me or is_joint_call):
+                            if cur_turns < 4:
+                                consecutive_bot_turns[chat_id] = cur_turns + 1
+                                should_respond = True
+                                time.sleep(1.0)
+                        # 2) 파트너 피클(남편/아내 피클)이 나를 부르거나 답장했을 때: 티키타카 상호작용
+                        elif is_partner_bot and (is_mentioned or is_reply_to_me) and cur_turns < 2:
                             consecutive_bot_turns[chat_id] = cur_turns + 1
                             should_respond = True
                             time.sleep(1.5)
