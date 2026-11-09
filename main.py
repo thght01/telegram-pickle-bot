@@ -50,7 +50,7 @@ def start_health_server():
     except Exception as e:
         print(f"HTTP 서버 오류: {e}")
 
-def call_ai(chat_history, system_prompt):
+def call_ai(chat_history, system_prompt, model_name=None):
     if not AI_API_KEY:
         return "⚠️ 클라우드 환경변수(AI_API_KEY)에 API 키가 설정되지 않았습니다!"
 
@@ -60,7 +60,7 @@ def call_ai(chat_history, system_prompt):
     }
 
     url = "https://api.groq.com/openai/v1/chat/completions"
-    model = AI_MODEL
+    model = model_name or AI_MODEL
 
     safe_history = []
     for m in chat_history[-4:]:
@@ -100,13 +100,14 @@ def call_ai(chat_history, system_prompt):
         return f"⚠️ AI 호출 실패: {str(e)}"
 
 class TelegramBotWorker(threading.Thread):
-    def __init__(self, token, display_name, system_prompt, trigger_keywords, counterpart_username):
+    def __init__(self, token, display_name, system_prompt, trigger_keywords, counterpart_username, ai_model="qwen/qwen3.8-27b"):
         super().__init__(daemon=True)
         self.token = token
         self.display_name = display_name
         self.system_prompt = system_prompt
         self.trigger_keywords = trigger_keywords
         self.counterpart_username = counterpart_username.lower()
+        self.ai_model = ai_model
         self.base_url = f"https://api.telegram.org/bot{self.token}"
         self.bot_username = ""
         self.chat_memories = {}
@@ -212,7 +213,7 @@ class TelegramBotWorker(threading.Thread):
                     if len(self.chat_memories[chat_id]) > 6:
                         self.chat_memories[chat_id] = self.chat_memories[chat_id][-6:]
 
-                    ai_reply = call_ai(self.chat_memories[chat_id], self.system_prompt)
+                    ai_reply = call_ai(self.chat_memories[chat_id], self.system_prompt, self.ai_model)
                     print(f"🤖 [{self.display_name} 발신]: {ai_reply}", flush=True)
 
                     if not ai_reply.startswith("⚠️"):
@@ -230,23 +231,25 @@ def main():
     # Render 헬스체크 데몬 가동
     threading.Thread(target=start_health_server, daemon=True).start()
 
-    # 1. 덕영님 피클 봇 워커 시작
+    # 1. 덕영님 피클 봇 워커 시작 (Qwen 2.5 27B 두뇌 유지)
     worker_deokyeong = TelegramBotWorker(
         token=DEOKYEONG_BOT_TOKEN,
         display_name="덕영 피클",
         system_prompt=DEOKYEONG_SYSTEM_PROMPT,
         trigger_keywords=["피클", "피클아", "덕영피클", "남편피클"],
-        counterpart_username="pickle_trade_bot"
+        counterpart_username="pickle_trade_bot",
+        ai_model="qwen/qwen3.8-27b"
     )
     worker_deokyeong.start()
 
-    # 2. 아내분 피클 봇 워커 시작
+    # 2. 아내분 피클 봇 워커 시작 (OpenAI GPT-OSS 120B 대형 두뇌 적용)
     worker_wife = TelegramBotWorker(
         token=WIFE_BOT_TOKEN,
         display_name="아내 피클",
         system_prompt=WIFE_SYSTEM_PROMPT,
         trigger_keywords=["아내피클", "아내 피클", "연두피클", "연두 피클"],
-        counterpart_username="my_usstock_bot"
+        counterpart_username="my_usstock_bot",
+        ai_model="openai/gpt-oss-120b"
     )
     worker_wife.start()
 
