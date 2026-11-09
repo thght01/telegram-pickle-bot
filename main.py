@@ -4,9 +4,9 @@ import requests
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# 텔레그램 봇 토큰들
-DEOKYEONG_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8741950885:AAGtUdA5w9-1Fozm2tzDrNhMptBITgNtqsE")
-WIFE_BOT_TOKEN = os.environ.get("WIFE_BOT_TOKEN", "9243967115:AAGZQP_d_rFbml2qAfy4dIsqslu_5HxIiIc")
+# 텔레그램 봇 토큰들 (환경변수에서만 로드, 하드코딩 절대 금지)
+DEOKYEONG_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+WIFE_BOT_TOKEN = os.environ.get("WIFE_BOT_TOKEN", "")
 
 AI_PROVIDER = os.environ.get("AI_PROVIDER", "groq")
 AI_API_KEY = os.environ.get("AI_API_KEY", "")
