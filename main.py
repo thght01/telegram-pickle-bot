@@ -161,6 +161,10 @@ class TelegramBotWorker(threading.Thread):
                 if from_username == self.bot_username:
                     continue
 
+                # 봇 명령어(슬래시로 시작)이고 나를 지목한 게 아니면 무시 (예: /mybots, /start@다른봇)
+                if user_text.startswith("/") and not f"@{self.bot_username}" in user_text.lower():
+                    continue
+
                 is_reply_to_me = False
                 if "reply_to_message" in message:
                     reply_user = message["reply_to_message"].get("from", {}).get("username", "").lower()
@@ -170,8 +174,21 @@ class TelegramBotWorker(threading.Thread):
                 # 나를 직접 부른 경우
                 is_mentioned = (f"@{self.bot_username}" in user_text.lower()) or any(k in user_text for k in self.trigger_keywords)
 
-                # 둘 다 부른 경우 (예: "둘이서", "피클들", "상의해봐")
-                is_joint_call = any(k in user_text for k in ["둘이서", "둘이", "피클들", "피클둘", "상의해"])
+                # 둘 다 부른 경우 (예: "둘이서", "피클들", "피클둘", "상의해")
+                is_joint_call = any(k in user_text for k in ["둘이서", "둘이", "피클들", "피클둘", "피클 상의", "상의해"])
+
+                # 다른 특정 봇을 호출한 경우 판별
+                other_bot_keywords = [
+                    "뮤즈", "뮤즈야", "@muse_control_bot",
+                    "부이", "부이야", "@sondondo_bot",
+                    "큐", "큐야", "@dondotrade_bot"
+                ]
+                if self.bot_username == "my_usstock_bot":
+                    other_bot_keywords.extend(["피키", "피키야", "아내피클", "연두피클", "@pickle_trade_bot"])
+                elif self.bot_username == "pickle_trade_bot":
+                    other_bot_keywords.extend(["피클", "피클아", "덕영피클", "남편피클", "@my_usstock_bot"])
+
+                is_call_other = any(k in user_text for k in other_bot_keywords)
 
                 should_respond = False
 
@@ -183,20 +200,22 @@ class TelegramBotWorker(threading.Thread):
                         if chat_type == "private":
                             should_respond = True
                         elif is_mentioned or is_reply_to_me or is_joint_call:
+                            # 나를 직접 부르거나, 나에게 답장했거나, 둘 다 부른 경우 응답
                             should_respond = True
                         elif self.bot_username == "my_usstock_bot":
-                            # 덕영 피클은 다른 봇을 콕 집어 부른 게 아니면 일반 발화에도 기본 응답
-                            is_call_other = ("부이야" in user_text) or ("@sondondo_bot" in user_text) or any(k in user_text for k in ["아내피클", "연두피클", "@pickle_trade_bot"])
+                            # 덕영 피클: 다른 봇을 부른 게 아닐 때만 일반 발화에 응답
                             if not is_call_other:
                                 should_respond = True
                     else:
-                        # 다른 봇이 말한 경우
+                        # 다른 봇이 말한 경우:
+                        # 뮤즈, 부이 등 제3자 봇의 말에는 끼어들지 않고,
+                        # 오직 파트너 피클(내 남편/아내 피클)이 나를 부르거나 답장했을 때만 2턴 이내로 티키타카
+                        is_partner_bot = (from_username == self.counterpart_username)
                         cur_turns = consecutive_bot_turns.get(chat_id, 0)
-                        # 상대방 피클이 나를 불렀거나 나에게 답장했을 때, 최대 2턴까지만 티키타카 허용 (무한루프 방지)
-                        if (is_mentioned or is_reply_to_me) and cur_turns < 2:
+                        
+                        if is_partner_bot and (is_mentioned or is_reply_to_me) and cur_turns < 2:
                             consecutive_bot_turns[chat_id] = cur_turns + 1
                             should_respond = True
-                            # 티키타카 시 자연스러운 간격을 위해 1.5초 대기
                             time.sleep(1.5)
 
                 if should_respond:
@@ -247,7 +266,7 @@ def main():
         token=WIFE_BOT_TOKEN,
         display_name="아내 피클",
         system_prompt=WIFE_SYSTEM_PROMPT,
-        trigger_keywords=["아내피클", "아내 피클", "연두피클", "연두 피클"],
+        trigger_keywords=["피키", "피키야", "아내피클", "아내 피클", "연두피클", "연두 피클"],
         counterpart_username="my_usstock_bot",
         ai_model="openai/gpt-oss-120b"
     )
