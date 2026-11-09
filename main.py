@@ -49,7 +49,7 @@ def call_ai(chat_history):
         model = "meta-llama/llama-3.3-70b-instruct"
     elif AI_PROVIDER == "groq":
         url = "https://api.groq.com/openai/v1/chat/completions"
-        model = "llama-3.3-70b-versatile"
+        model = os.environ.get("AI_MODEL", "qwen/qwen3.8-27b")
     else:
         url = "https://api.openai.com/v1/chat/completions"
         model = "gpt-4o-mini"
