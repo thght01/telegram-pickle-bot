@@ -1,6 +1,8 @@
 import os
 import time
 import requests
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8741950885:AAGtUdA5w9-1Fozm2tzDrNhMptBITgNtqsE")
 AI_PROVIDER = os.environ.get("AI_PROVIDER", "openrouter")
@@ -13,6 +15,25 @@ SYSTEM_PROMPT = os.environ.get(
 
 BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 chat_memories = {}
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Pickle Telegram Bot is running!")
+
+    def log_message(self, format, *args):
+        pass
+
+def start_health_server():
+    port = int(os.environ.get("PORT", 10000))
+    print(f"🌐 Health check HTTP server started on port {port}")
+    try:
+        server = HTTPServer(("0.0.0.0", port), HealthHandler)
+        server.serve_forever()
+    except Exception as e:
+        print(f"HTTP 서버 오류: {e}")
 
 def call_ai(chat_history):
     if not AI_API_KEY:
@@ -41,12 +62,13 @@ def call_ai(chat_history):
 
     try:
         res = requests.post(url, headers=headers, json=payload, timeout=30)
-        data = res.json()
-        if "choices" in data and len(data["choices"]) > 0:
-            return data["choices"][0]["message"]["content"]
-        return f"⚠️ AI 호출 오류: {data.get('error', {}).get('message', '알 수 없는 오류')}"
+        res_json = res.json()
+        if "choices" in res_json and len(res_json["choices"]) > 0:
+            return res_json["choices"][0]["message"]["content"].strip()
+        else:
+            return f"⚠️ AI 응답 오류: {res.text[:150]}"
     except Exception as e:
-        return f"⚠️ 네트워크 오류: {str(e)}"
+        return f"⚠️ AI 호출 실패: {str(e)}"
 
 def get_updates(offset=None):
     url = f"{BASE_URL}/getUpdates?timeout=30"
@@ -70,8 +92,17 @@ def send_message(chat_id, text, reply_to_message_id=None):
 
 def main():
     print("🤖 피클 텔레그램 AI 봇 (클라우드 24시간 가동 시작)")
-    me_res = requests.get(f"{BASE_URL}/getMe").json()
-    bot_username = me_res.get("result", {}).get("username", "my_usstock_bot")
+    
+    # Render 포트 바인딩 헬스체크 데몬 시작
+    threading.Thread(target=start_health_server, daemon=True).start()
+
+    try:
+        me_res = requests.get(f"{BASE_URL}/getMe", timeout=10).json()
+        bot_username = me_res.get("result", {}).get("username", "my_usstock_bot")
+        print(f"✅ 봇 연결 성공: @{bot_username}")
+    except Exception as e:
+        bot_username = "my_usstock_bot"
+        print(f"⚠️ getMe 실패: {e}")
 
     offset = None
     while True:
