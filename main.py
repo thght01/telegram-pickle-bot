@@ -119,20 +119,36 @@ def main():
             user_text = message["text"].strip()
             from_user = message.get("from", {}).get("first_name", "사용자")
 
+            from_is_bot = message.get("from", {}).get("is_bot", False)
             is_reply_to_bot = False
             if "reply_to_message" in message:
                 reply_user = message["reply_to_message"].get("from", {}).get("username")
                 if reply_user == bot_username:
                     is_reply_to_bot = True
 
-            is_mentioned = f"@{bot_username}" in user_text
+            is_mentioned = (f"@{bot_username}".lower() in user_text.lower()) or ("피클" in user_text)
+            is_call_buoy = user_text.startswith("부이야") or user_text.startswith("부이 ") or ("@sondondo_bot" in user_text)
 
-            if chat_type == "private" or is_mentioned or is_reply_to_bot:
+            should_respond = False
+            if from_is_bot:
+                # 다른 봇(부이 등)의 메시지: 피클을 직접 부르거나 답장했을 때만 응답 (무한루프 방지)
+                if is_mentioned or is_reply_to_bot:
+                    should_respond = True
+            else:
+                # 사용자(덕영님)의 메시지:
+                # 1) 개인방
+                # 2) '피클' 호칭 또는 @멘션
+                # 3) 피클 메시지에 답장
+                # 4) 그룹방에서 부이만 단독으로 부른 게 아닌 모든 일반 발화
+                if chat_type == "private" or is_mentioned or is_reply_to_bot or not is_call_buoy:
+                    should_respond = True
+
+            if should_respond:
                 clean_text = user_text.replace(f"@{bot_username}", "").strip()
                 if not clean_text:
-                    clean_text = "안녕"
+                    clean_text = user_text.strip()
 
-                print(f"[{chat_type}] {from_user}: {clean_text}")
+                print(f"[{chat_type}] {from_user}: {clean_text}", flush=True)
 
                 if chat_id not in chat_memories:
                     chat_memories[chat_id] = []
@@ -142,6 +158,7 @@ def main():
                     chat_memories[chat_id] = chat_memories[chat_id][-10:]
 
                 ai_reply = call_ai(chat_memories[chat_id])
+                print(f"🤖 [피클 응답]: {ai_reply}", flush=True)
                 chat_memories[chat_id].append({"role": "assistant", "content": ai_reply})
                 send_message(chat_id, ai_reply, reply_to_message_id=msg_id)
 
