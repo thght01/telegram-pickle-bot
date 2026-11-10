@@ -223,20 +223,18 @@ class TelegramBotWorker(threading.Thread):
                 # 둘 다 부른 경우 (예: "둘이서", "피클들", "피클둘", "상의해", "각자", "서로")
                 is_joint_call = any(k in user_text for k in ["둘이서", "둘이", "피클들", "피클둘", "피클 상의", "상의해", "각자", "서로", "다같이", "너희", "모두", "다들", "피클 피키"])
 
-                # 다른 특정 봇을 호출한 경우 판별
-                other_bot_keywords = [
-                    "부이", "부이야", "@sondondo_bot",
-                    "큐", "큐야", "@dondotrade_bot"
+                # 다른 특정 봇 1:1 전용 단독 호출인지 정밀 판별
+                is_exclusive_other = False
+                common_instruction_keywords = [
+                    "피클", "피키", "다들", "모두", "너희", "둘이", "서로", "대답", "체크", "해라", "해줘", "수정", "실시간", "공유", "스터디", "배포"
                 ]
-                if not is_muse:
-                    other_bot_keywords.extend(["뮤즈", "뮤즈야", "@muse_control_bot"])
-
                 if self.bot_username == "my_usstock_bot":
-                    other_bot_keywords.extend(["피키", "피키야", "아내피클", "연두피클", "@pickle_trade_bot"])
-                elif self.bot_username == "pickle_trade_bot":
-                    other_bot_keywords.extend(["피클", "피클아", "덕영피클", "남편피클", "@my_usstock_bot"])
-
-                is_call_other = any(k in user_text for k in other_bot_keywords)
+                    for other_b in ["뮤즈", "부이", "큐", "피키"]:
+                        if f"{other_b}야" in user_text or f"@{other_b}" in user_text:
+                            # 공통 명령어나 복합 지시어가 없으면 그 봇 단독 호출로 판정
+                            if not any(k in user_text for k in common_instruction_keywords if k != other_b):
+                                is_exclusive_other = True
+                                break
 
                 should_respond = False
 
@@ -248,11 +246,9 @@ class TelegramBotWorker(threading.Thread):
                         if is_muse:
                             # 뮤즈의 말에는 회장님 지시대로 피클·피키 둘 다 무조건 지체 없이 실시간 응답!
                             if self.bot_username == "my_usstock_bot":
-                                # 덕영 피클: 피키만 콕 집어 부른 게 아니면 무조건 즉시 응답
                                 if not ("피키만" in user_text or ("피키야" in user_text and not any(k in user_text for k in ["피클", "둘이", "다들", "모두", "각자"]))):
                                     should_respond = True
                             elif self.bot_username == "pickle_trade_bot":
-                                # 아내 피클(피키): 덕영 피클만 콕 집어 부른 게 아니면 무조건 즉시 응답
                                 if not ("피클만" in user_text or ("피클아" in user_text and not any(k in user_text for k in ["피키", "둘이", "다들", "모두", "각자"]))):
                                     should_respond = True
                         else:
@@ -262,10 +258,12 @@ class TelegramBotWorker(threading.Thread):
                             elif is_mentioned or is_reply_to_me or is_joint_call:
                                 should_respond = True
                             elif self.bot_username == "my_usstock_bot":
-                                if not is_call_other:
+                                # 덕영 피클: 다른 봇 단독 1:1 대화가 아니면 회장님의 모든 그룹 발화에 응답!
+                                if not is_exclusive_other:
                                     should_respond = True
                             elif self.bot_username == "pickle_trade_bot":
-                                if "너도" in user_text or "피키" in user_text or is_joint_call:
+                                # 피키: 피키 언급, 공통 지시어, 또는 회장님의 봇 전체 명령 시 응답
+                                if any(k in user_text for k in ["피키", "너도", "피클", "다들", "모두", "실시간", "대답", "배포"]):
                                     should_respond = True
                     else:
                         # 2. 부이, 큐 등 다른 봇의 발화: 파트너 피클 티키타카 제한
@@ -276,12 +274,15 @@ class TelegramBotWorker(threading.Thread):
                             should_respond = True
                             time.sleep(1.0)
 
+                # 모든 메시지에 대해 수신 감지 로그 출력 (필터 디버깅 완벽 보장)
+                print(f"[{self.display_name} 감지] {speaker_label}: {user_text[:50]} | 응답여부: {should_respond}", flush=True)
+
                 if should_respond:
                     clean_text = user_text.replace(f"@{self.bot_username}", "").strip()
                     if not clean_text:
                         clean_text = user_text.strip()
 
-                    print(f"[{self.display_name} 수신] {speaker_label}: {clean_text}", flush=True)
+                    print(f"[{self.display_name} 수신 확정] {speaker_label}: {clean_text}", flush=True)
 
                     if chat_id not in self.chat_memories:
                         self.chat_memories[chat_id] = []
