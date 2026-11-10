@@ -336,14 +336,14 @@ def main():
     )
     worker_deokyeong.start()
 
-    # 4. 아내분 피클 봇 워커 시작 (OpenAI GPT-OSS 120B 대형 두뇌)
+    # 4. 아내분 피클 봇 워커 시작 (덕영 피클과 동일한 Qwen 2.5 27B 초고속 두뇌)
     worker_wife = TelegramBotWorker(
         token=WIFE_BOT_TOKEN,
         display_name="아내 피클",
         system_prompt=WIFE_SYSTEM_PROMPT,
         trigger_keywords=["피키", "피키야", "아내피클", "아내 피클", "연두피클", "연두 피클"],
         counterpart_username="my_usstock_bot",
-        ai_model="openai/gpt-oss-120b"
+        ai_model="qwen/qwen3.8-27b"
     )
     worker_wife.start()
 
