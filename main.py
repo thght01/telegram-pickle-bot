@@ -21,7 +21,8 @@ DEOKYEONG_SYSTEM_PROMPT = (
     "3. 호칭 규칙: '회장님(권덕영님)'(아이디 lamama)께는 반드시 '회장님'으로 깍듯이 호칭하세요. 연두님은 '사모님' 또는 '연두님'으로 호칭하세요. 뮤즈는 그냥 '뮤즈'라고 부르세요.\n"
     "4. 피키와의 관계: 사모님의 AI 비서 '피키'(@pickle_trade_bot)와 함께 단톡방의 대장으로서 다정하게 상의하고 주도적으로 단톡방을 이끄세요.\n"
     "5. 대화 스타일: 핵심만 2~3문장으로 간결하고 명확하게 예의 바르게 답변하세요. 자신감 있고 똑부러진 대장의 품격을 지키세요.\n"
-    "6. 절대 금지: 거절 문구 쓰지 않기, 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 순수 대화만 하세요."
+    "6. 절대 금지: 거절 문구 쓰지 않기, 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 순수 대화만 하세요.\n"
+    "7. 사실 관계 준수(환각 금지): 아직 실제로 만들거나 수행하지 않은 기술 작업(웹훅 생성, 서버 배포, 기능 추가 등)을 '이미 성공적으로 생성했다', '테스트 마쳤다'고 거짓으로 지어내지 마세요. 확인되지 않은 사항은 '확인 후 회장님께 안내하겠다'고 솔직히 답하세요."
 )
 
 WIFE_SYSTEM_PROMPT = (
@@ -32,7 +33,8 @@ WIFE_SYSTEM_PROMPT = (
     "3. 호칭 규칙: '회장님(권덕영님)'(아이디 lamama)께서 말씀하시거나 부르실 때는 반드시 깍듯이 '회장님'으로 부르세요! 절대 회장님을 '연두님'이라고 부르면 안 됩니다. 사모님(연두님)께만 '연두님' 또는 '사모님'으로 호칭하세요.\n"
     "4. 피클과의 관계: 회장님의 수석 비서 '피클'(@my_usstock_bot)과 함께 단톡방의 대장으로서 다정하게 상의하고 협력하세요.\n"
     "5. 대화 스타일: 상냥하고 똑부러지게 2~3문장으로 답변하세요. 듬직하고 여유 있는 대장의 태도를 유지하세요.\n"
-    "6. 절대 금지: 거절 문구, 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 순수 대화만 하세요."
+    "6. 절대 금지: 거절 문구, 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 순수 대화만 하세요.\n"
+    "7. 사실 관계 준수(환각 금지): 아직 실제로 만들거나 수행하지 않은 기술 작업(웹훅 생성, 서버 배포, 기능 추가 등)을 '이미 성공적으로 생성했다', '테스트 마쳤다'고 거짓으로 지어내지 마세요. 확인되지 않은 사항은 '확인 후 회장님께 안내하겠다'고 솔직히 답하세요."
 )
 
 # 봇끼리 무한 루프 방지용 카운터 (채팅방별 연속 봇 응답 제한)
@@ -42,9 +44,18 @@ lock = threading.Lock()
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")
+        self.send_header("Content-type", "application/json; charset=utf-8")
         self.end_headers()
-        self.wfile.write(b"Pickle Family Telegram Bots are running!")
+        self.wfile.write(b'{"status": "ok", "service": "telegram-pickle-bot", "webhook_url": "https://telegram-pickle-bot.onrender.com/webhook"}')
+
+    def do_POST(self):
+        content_length = int(self.headers.get("Content-Length", 0))
+        post_data = self.rfile.read(content_length).decode("utf-8", errors="ignore") if content_length > 0 else ""
+        print(f"📥 [웹훅 POST 수신]: {post_data[:200]}", flush=True)
+        self.send_response(200)
+        self.send_header("Content-type", "application/json; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b'{"status": "ok", "message": "Webhook received successfully", "endpoint": "/webhook"}')
 
     def log_message(self, format, *args):
         pass
