@@ -298,7 +298,19 @@ class TelegramBotWorker(threading.Thread):
                         "둘이서", "둘이", "둘다", "둘 다", "피클들", "피클둘", "피클 상의", "상의해",
                         "각자", "서로", "다같이", "너희", "모두", "다들", "피클 피키", "피키 피클", "전원", "모든 봇"
                     ])
-                    is_other_bot_kw = any(k in user_text for k in ["부이야", "@sondondo_bot", "큐야", "@dondotrade_bot"])
+                    # 타 봇 및 타 대상 호명 감지 (인스, 부이, 큐, 뮤즈, 연두 등 또는 타인 ~야/~아 호명)
+                    words = user_text.split()
+                    first_word = words[0].rstrip("!?,.~") if words else ""
+
+                    is_calling_other = False
+                    if any(k in user_text for k in [
+                        "인스", "인스야", "부이", "부이야", "@sondondo_bot",
+                        "큐야", "@dondotrade_bot", "뮤즈야", "@muse_control_bot",
+                        "연두야", "@choyandu1"
+                    ]):
+                        is_calling_other = True
+                    elif (first_word.endswith("야") or first_word.endswith("아")) and not any(k in first_word for k in ["피클", "피키", "모두", "다들", "둘다"]):
+                        is_calling_other = True
 
                     if is_reply_to_me:
                         # 특정 봇의 메시지에 직접 '답장'을 달았을 때 -> 해당 봇 응답
@@ -306,18 +318,20 @@ class TelegramBotWorker(threading.Thread):
                     elif is_both_kw or (is_pickle_kw and is_picky_kw):
                         # 둘 다 명시적으로 불렀을 때 -> 피클과 피키 둘 다 응답
                         should_respond = True
+                    elif is_calling_other and not is_pickle_kw and not is_picky_kw:
+                        # 인스, 부이, 큐, 뮤즈 등 타 대상을 호명했을 때 -> 피클·피키 일체 침묵!
+                        should_respond = False
                     elif self.bot_username == "my_usstock_bot":
                         # [수석 비서 피클]
-                        # 피키만 단독으로 콕 집어 불렀거나 타 봇(부이·큐)만 부른 경우가 아니라면,
-                        # 회장님·뮤즈·연두님 등 모든 참가자의 모든 메시지/질문/요청에 100% 즉시 응답!
-                        if (is_picky_kw and not is_pickle_kw) or is_other_bot_kw:
+                        # 피키만 단독으로 콕 집어 불렀을 때만 제외하고, 모든 일반 메시지/요청에 100% 응답!
+                        if is_picky_kw and not is_pickle_kw:
                             should_respond = False
                         else:
                             should_respond = True
                     elif self.bot_username == "pickle_trade_bot":
                         # [아내 비서 피키]
-                        # 피키를 부르거나, 피키에게 질문하거나, 피키에게 답장하거나, 둘 다 부른 모든 메시지에 즉시 응답!
-                        if is_picky_kw or is_both_kw or is_reply_to_me:
+                        # 피키를 불렀거나 언급한 모든 메시지에 즉시 응답!
+                        if is_picky_kw:
                             should_respond = True
                         else:
                             should_respond = False
