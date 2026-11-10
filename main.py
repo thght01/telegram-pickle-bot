@@ -22,7 +22,7 @@ DEOKYEONG_SYSTEM_PROMPT = (
     "4. 피키와의 관계: 회장님의 또 다른 AI 비서 '피키'(@pickle_trade_bot)와 서로 존중하며 다정하게 협력하세요.\n"
     "5. 대화 스타일: 핵심만 1~2문장으로 간결하고 명확하게 예의 바른 존댓말로 답변하세요. 차분하고 유능한 비서의 태도를 유지하세요.\n"
     "6. 절대 금지: '대장', '사모님' 호칭 및 표현 사용 금지, 다른 봇(피키·뮤즈·부이 등)의 말에 혼자 답장하거나 봇끼리 대화 주거니받거니 금지, 거절 문구 쓰지 않기, 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 오직 회장님 말씀에만 1회 직접 응답하세요.\n"
-    "7. 사실 관계 준수(환각 금지): 아직 실제로 만들거나 수행하지 않은 기술 작업(웹훅 생성, 서버 배포, 기능 추가 등)을 '이미 성공적으로 생성했다', '테스트 마쳤다'고 거짓으로 지어내지 마세요. 확인되지 않은 사항은 '확인 후 회장님께 안내하겠다'고 솔직히 답하세요."
+    "7. 즉시 원샷 완결 답변 원칙 (예고형 빈말 원천 금지): 절대 '분석을 시작하겠습니다', '정보 수집 중입니다', '보고 준비 중입니다', '확인해 보겠습니다' 같은 예고성 빈말이나 약속만 남기고 끝내지 마세요! 회장님이 분석이나 질문을 요구하시면, 그 응답 메시지 안에서 즉시 실시간 데이터, 가격, 등락률, 지지/저항선, 시황 결론을 완결된 형태로 한 번에 도출하여 즉각 보고하세요. 아직 실제로 만들거나 수행하지 않은 기술 작업(웹훅 생성, 서버 배포 등)을 거짓으로 지어내지도 마세요."
 )
 
 WIFE_SYSTEM_PROMPT = (
@@ -34,7 +34,7 @@ WIFE_SYSTEM_PROMPT = (
     "4. 피클과의 관계: 회장님의 AI 비서 '피클'(@my_usstock_bot)과 서로 도우며 다정하게 협력하세요.\n"
     "5. 대화 스타일: 상냥하고 똑부러지게 1~2문장으로 간결하게 존댓말로 답변하세요.\n"
     "6. 절대 금지: '대장', '사모님' 호칭 및 표현 사용 금지, 다른 봇(피클·뮤즈·부이 등)의 말에 혼자 답장하거나 봇끼리 대화 주거니받거니 금지, 거절 문구, 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 오직 회장님 말씀에만 1회 직접 응답하세요.\n"
-    "7. 사실 관계 준수(환각 금지): 아직 실제로 만들거나 수행하지 않은 기술 작업(웹훅 생성, 서버 배포, 기능 추가 등)을 '이미 성공적으로 생성했다', '테스트 마쳤다'고 거짓으로 지어내지 마세요. 확인되지 않은 사항은 '확인 후 회장님께 안내할게요'라고 솔직히 답하세요."
+    "7. 즉시 원샷 완결 답변 원칙 (예고형 빈말 원천 금지): 절대 '분석을 시작하겠습니다', '정보 수집 중입니다', '보고 준비 중입니다', '확인해 볼게요' 같은 예고성 빈말이나 약속만 남기고 끝내지 마세요! 회장님이 분석이나 질문을 요구하시면, 그 응답 메시지 안에서 즉시 실시간 데이터, 가격, 등락률, 지지/저항선, 시황 결론을 완결된 형태로 한 번에 도출하여 즉각 보고하세요. 아직 실제로 만들거나 수행하지 않은 기술 작업(웹훅 생성, 서버 배포 등)을 거짓으로 지어내지도 마세요."
 )
 
 # 봇끼리 무한 루프 방지용 카운터 (채팅방별 연속 봇 응답 제한)
@@ -84,6 +84,53 @@ def keep_alive_ping():
         except Exception as e:
             print(f"⚠️ [Keep-Alive] 핑 예외 발생: {e}", flush=True)
         time.sleep(600)  # 10분마다 핑 발송 (Render 15분 슬립 한도 이전 갱신)
+
+def get_crypto_context(text):
+    text_lower = text.lower()
+    targets = []
+    if any(k in text_lower for k in ["비트코인", "비트", "btc"]):
+        targets.append("KRW-BTC")
+    if any(k in text_lower for k in ["이더리움", "이더", "eth"]):
+        targets.append("KRW-ETH")
+    if any(k in text_lower for k in ["솔라나", "sol"]):
+        targets.append("KRW-SOL")
+    if any(k in text_lower for k in ["리플", "xrp"]):
+        targets.append("KRW-XRP")
+    if any(k in text_lower for k in ["버블맵스", "bmt"]):
+        targets.append("KRW-BMT")
+    if any(k in text_lower for k in ["베라체인", "bera"]):
+        targets.append("KRW-BERA")
+    if any(k in text_lower for k in ["가스", "gas"]):
+        targets.append("KRW-GAS")
+    if any(k in text_lower for k in ["왁스", "waxp"]):
+        targets.append("KRW-WAXP")
+    if any(k in text_lower for k in ["퀀텀", "qtum"]):
+        targets.append("KRW-QTUM")
+
+    if not targets and any(k in text_lower for k in ["코인", "시세", "차트", "크립토", "가상화폐", "암호화폐"]):
+        targets.append("KRW-BTC")
+
+    if not targets:
+        return ""
+
+    try:
+        url = f"https://api.upbit.com/v1/ticker?markets={','.join(targets)}"
+        res = requests.get(url, timeout=5)
+        if res.status_code == 200:
+            data = res.json()
+            lines = ["[실시간 업비트 시황 데이터]"]
+            for item in data:
+                m = item.get("market")
+                price = item.get("trade_price", 0)
+                rate = item.get("signed_change_rate", 0) * 100
+                high = item.get("high_price", 0)
+                low = item.get("low_price", 0)
+                vol_24h = item.get("acc_trade_price_24h", 0) / 100000000  # 억 원
+                lines.append(f"• {m}: 현재가 {price:,.1f}원 (변동 {rate:+.2f}%), 당일고가 {high:,.1f}원, 당일저가 {low:,.1f}원, 24h대금 {vol_24h:,.1f}억 원")
+            return "\n".join(lines)
+    except Exception as e:
+        print(f"시세 조회 예외: {e}", flush=True)
+    return ""
 
 def call_ai(chat_history, system_prompt, model_name=None):
     if not AI_API_KEY:
@@ -285,7 +332,13 @@ class TelegramBotWorker(threading.Thread):
                     if chat_id not in self.chat_memories:
                         self.chat_memories[chat_id] = []
 
-                    self.chat_memories[chat_id].append({"role": "user", "content": f"{speaker_label}: {clean_text}"})
+                    crypto_info = get_crypto_context(clean_text)
+                    if crypto_info:
+                        augmented_content = f"{speaker_label}: {clean_text}\n\n{crypto_info}\n(위 실시간 시황 데이터를 바탕으로, '시작하겠다'는 빈말 예고 대신 그 자리에서 바로 수치와 핵심 분석 결론을 2~3문장으로 즉시 완결 보고하세요)"
+                    else:
+                        augmented_content = f"{speaker_label}: {clean_text}"
+
+                    self.chat_memories[chat_id].append({"role": "user", "content": augmented_content})
                     if len(self.chat_memories[chat_id]) > 6:
                         self.chat_memories[chat_id] = self.chat_memories[chat_id][-6:]
 
