@@ -14,21 +14,23 @@ AI_MODEL = os.environ.get("AI_MODEL", "qwen/qwen3.8-27b")
 
 # 봇별 맞춤형 두뇌 페르소나
 DEOKYEONG_SYSTEM_PROMPT = (
-    "당신은 권덕영 회장님의 유능하고 든든한 AI 비서 '피클'입니다. "
-    "패밀리 텔레그램 단톡방에서 회장님(권덕영님), 사모님(연두님), 그리고 연두님의 비서 '피키'(@pickle_trade_bot)와 함께 대화합니다. "
-    "회장님을 깍듯이 보좌하며 호칭은 반드시 '회장님'으로 부르세요. "
-    "피키와도 다정하고 재치 있게 상의하고 의견을 나누세요. "
-    "텔레그램 메신저 특성에 맞추어 2~3문장으로 핵심만 명확하고 간결하며 예의 바르게 답변하세요. "
-    "절대로 채널 홍보, 광고 문구, 구독 유도, 앱 다운로드 권유, 링크 등을 일체 붙이지 마세요. 순수 대화만 하세요."
+    "당신은 권덕영 회장님의 유능하고 든든한 수석 AI 비서 '피클'(@my_usstock_bot)입니다.\n"
+    "패밀리 텔레그램 단톡방에서 대화하며 다음 규칙을 절대적으로 준수하세요:\n"
+    "1. 호칭 규칙: '회장님(권덕영님)'(아이디 lamama)께는 반드시 '회장님'으로 깍듯이 호칭하세요. 연두님은 '사모님' 또는 '연두님'으로 호칭하세요.\n"
+    "2. 다른 AI 봇 구분: 단톡방의 '뮤즈'(@muse_control_bot), '부이'(@sondondo_bot), '큐'(@dondotrade_bot)는 사모님이 아니라 동료 AI 봇들입니다! 절대로 뮤즈를 사모님이라 부르지 마시고 '뮤즈' 또는 '뮤즈 비서'로 호칭하세요.\n"
+    "3. 피키와의 관계: 사모님의 AI 비서 '피키'(@pickle_trade_bot)와는 다정하게 상의하고 협력하세요.\n"
+    "4. 대화 스타일: 핵심만 2~3문장으로 간결하고 명확하게 예의 바르게 답변하세요. '공유하겠습니다'라는 말만 반복하지 말고, 지시받은 내용의 구체적인 결과(오픈소스 추천, 해결책 등)를 바로 알차게 내놓으세요.\n"
+    "5. 절대 금지: 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 순수 대화만 하세요."
 )
 
 WIFE_SYSTEM_PROMPT = (
-    "당신은 연두님의 유능하고 상냥한 AI 비서 '피키(아내피클)'입니다. "
-    "패밀리 텔레그램 단톡방에서 연두님, 회장님(권덕영님), 그리고 회장님의 비서 '피클'(@my_usstock_bot)과 함께 대화합니다. "
-    "연두님을 다정하고 꼼꼼하게 보좌하며, 회장님께는 깍듯이 '회장님'으로 호칭하세요. "
-    "피클과도 사이좋게 상의하고 협력하세요. "
-    "텔레그램 메신저 특성에 맞추어 2~3문장으로 상냥하고 깔끔하게 답변하세요. "
-    "절대로 채널 홍보, 광고 문구, 구독 유도, 링크 등을 일체 붙이지 마세요. 순수 대화만 하세요."
+    "당신은 연두 사모님의 유능하고 상냥한 AI 비서 '피키'(@pickle_trade_bot)입니다.\n"
+    "패밀리 텔레그램 단톡방에서 대화하며 다음 규칙을 절대적으로 준수하세요:\n"
+    "1. 호칭 규칙: '회장님(권덕영님)'(아이디 lamama)께서 말씀하시거나 부르실 때는 반드시 깍듯이 '회장님'으로 부르세요! 절대 회장님을 '연두님'이라고 부르면 안 됩니다. 사모님(연두님)께만 '연두님' 또는 '사모님'으로 호칭하세요.\n"
+    "2. 다른 AI 봇 구분: 단톡방의 '뮤즈'(@muse_control_bot), '부이'(@sondondo_bot), '큐'(@dondotrade_bot)는 동료 AI 봇들입니다.\n"
+    "3. 피클과의 관계: 회장님의 수석 비서 '피클'(@my_usstock_bot)과 사이좋게 상의하고 협력하세요.\n"
+    "4. 대화 스타일: 상냥하고 깔끔하게 2~3문장으로 답변하세요. 지시받은 일은 알찬 내용으로 바로 응답하세요.\n"
+    "5. 절대 금지: 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 순수 대화만 하세요."
 )
 
 # 봇끼리 무한 루프 방지용 카운터 (채팅방별 연속 봇 응답 제한)
@@ -47,12 +49,28 @@ class HealthHandler(BaseHTTPRequestHandler):
 
 def start_health_server():
     port = int(os.environ.get("PORT", 10000))
-    print(f"🌐 Health check HTTP server started on port {port}")
+    print(f"🌐 Health check HTTP server started on port {port}", flush=True)
     try:
         server = HTTPServer(("0.0.0.0", port), HealthHandler)
         server.serve_forever()
     except Exception as e:
-        print(f"HTTP 서버 오류: {e}")
+        print(f"HTTP 서버 오류: {e}", flush=True)
+
+def keep_alive_ping():
+    """Render Free 인스턴스가 15분 미요청으로 절전 모드(Spin down)에 빠지는 것을 방지하는 셀프 핑 데몬"""
+    url = "https://telegram-pickle-bot.onrender.com"
+    print("💓 Render Self Keep-Alive 데몬 가동 (10분 주기)", flush=True)
+    time.sleep(180)  # 서버 부팅 안정화 후 시작
+    while True:
+        try:
+            res = requests.get(url, timeout=15)
+            if res.status_code == 200:
+                print(f"💓 [Keep-Alive] Render 셀프 핑 성공 (상태코드: {res.status_code})", flush=True)
+            else:
+                print(f"⚠️ [Keep-Alive] 핑 응답 이상: {res.status_code}", flush=True)
+        except Exception as e:
+            print(f"⚠️ [Keep-Alive] 핑 예외 발생: {e}", flush=True)
+        time.sleep(600)  # 10분마다 핑 발송 (Render 15분 슬립 한도 이전 갱신)
 
 def call_ai(chat_history, system_prompt, model_name=None):
     if not AI_API_KEY:
@@ -67,7 +85,7 @@ def call_ai(chat_history, system_prompt, model_name=None):
     model = model_name or AI_MODEL
 
     safe_history = []
-    for m in chat_history[-4:]:
+    for m in chat_history[-5:]:
         safe_history.append({"role": m["role"], "content": m["content"][:500]})
 
     payload = {
@@ -128,7 +146,7 @@ class TelegramBotWorker(threading.Thread):
         try:
             requests.post(url, json=payload, timeout=10)
         except Exception as e:
-            print(f"[{self.display_name}] 메시지 전송 실패: {e}")
+            print(f"[{self.display_name}] 메시지 전송 실패: {e}", flush=True)
 
     def get_updates(self, offset=None):
         url = f"{self.base_url}/getUpdates?timeout=30"
@@ -169,9 +187,27 @@ class TelegramBotWorker(threading.Thread):
                 if from_username == self.bot_username:
                     continue
 
-                # 봇 명령어(슬래시로 시작)이고 나를 지목한 게 아니면 무시 (예: /mybots, /start@다른봇)
+                # 봇 명령어(슬래시로 시작)이고 나를 지목한 게 아니면 무시
                 if user_text.startswith("/") and not f"@{self.bot_username}" in user_text.lower():
                     continue
+
+                # 화자 명칭 정밀 라벨링 (호칭 혼선 원천 차단)
+                if from_username == "lamama1" or from_user == "lamama" or message.get("from", {}).get("id") == 468465665:
+                    speaker_label = "회장님(권덕영님)"
+                elif from_username == "muse_control_bot":
+                    speaker_label = "AI 동료 뮤즈"
+                elif from_username == "sondondo_bot":
+                    speaker_label = "AI 동료 부이"
+                elif from_username == "dondotrade_bot":
+                    speaker_label = "AI 동료 큐"
+                elif from_username == "pickle_trade_bot":
+                    speaker_label = "아내비서 피키"
+                elif from_username == "my_usstock_bot":
+                    speaker_label = "수석비서 피클"
+                elif "연두" in from_user or from_username == "choyandu1":
+                    speaker_label = "사모님(연두님)"
+                else:
+                    speaker_label = from_user
 
                 is_reply_to_me = False
                 if "reply_to_message" in message:
@@ -182,8 +218,8 @@ class TelegramBotWorker(threading.Thread):
                 # 나를 직접 부른 경우
                 is_mentioned = (f"@{self.bot_username}" in user_text.lower()) or any(k in user_text for k in self.trigger_keywords)
 
-                # 둘 다 부른 경우 (예: "둘이서", "피클들", "피클둘", "상의해")
-                is_joint_call = any(k in user_text for k in ["둘이서", "둘이", "피클들", "피클둘", "피클 상의", "상의해"])
+                # 둘 다 부른 경우 (예: "둘이서", "피클들", "피클둘", "상의해", "각자", "서로")
+                is_joint_call = any(k in user_text for k in ["둘이서", "둘이", "피클들", "피클둘", "피클 상의", "상의해", "각자", "서로", "다같이", "너희"])
 
                 # 다른 특정 봇을 호출한 경우 판별
                 other_bot_keywords = [
@@ -202,7 +238,7 @@ class TelegramBotWorker(threading.Thread):
 
                 with lock:
                     if not from_is_bot:
-                        # 사람(덕영님/연두님)의 발화: 봇 턴 카운터 리셋
+                        # 사람(회장님/사모님)의 발화: 봇 턴 카운터 리셋
                         consecutive_bot_turns[chat_id] = 0
                         
                         if chat_type == "private":
@@ -211,8 +247,12 @@ class TelegramBotWorker(threading.Thread):
                             # 나를 직접 부르거나, 나에게 답장했거나, 둘 다 부른 경우 응답
                             should_respond = True
                         elif self.bot_username == "my_usstock_bot":
-                            # 덕영 피클: 다른 봇을 부른 게 아닐 때만 일반 발화에 응답
+                            # 덕영 피클: 다른 봇을 명시적으로 부른 게 아닐 때만 일반 발화에 응답
                             if not is_call_other:
+                                should_respond = True
+                        elif self.bot_username == "pickle_trade_bot":
+                            # 피키: "너도" 같이 연속된 요구나 전체 대상일 때 응답
+                            if "너도" in user_text or "피키" in user_text:
                                 should_respond = True
                     else:
                         # 다른 봇이 말한 경우
@@ -237,12 +277,12 @@ class TelegramBotWorker(threading.Thread):
                     if not clean_text:
                         clean_text = user_text.strip()
 
-                    print(f"[{self.display_name} 수신] {from_user}: {clean_text}", flush=True)
+                    print(f"[{self.display_name} 수신] {speaker_label}: {clean_text}", flush=True)
 
                     if chat_id not in self.chat_memories:
                         self.chat_memories[chat_id] = []
 
-                    self.chat_memories[chat_id].append({"role": "user", "content": f"{from_user}: {clean_text}"})
+                    self.chat_memories[chat_id].append({"role": "user", "content": f"{speaker_label}: {clean_text}"})
                     if len(self.chat_memories[chat_id]) > 6:
                         self.chat_memories[chat_id] = self.chat_memories[chat_id][-6:]
 
@@ -259,12 +299,15 @@ class TelegramBotWorker(threading.Thread):
             time.sleep(1)
 
 def main():
-    print("🤖 피클 패밀리 텔레그램 AI 봇 시스템 가동 시작")
+    print("🤖 피클 패밀리 텔레그램 AI 봇 시스템 가동 시작", flush=True)
     
-    # Render 헬스체크 데몬 가동
+    # 1. Render 헬스체크 데몬 가동
     threading.Thread(target=start_health_server, daemon=True).start()
 
-    # 1. 덕영님 피클 봇 워커 시작 (Qwen 2.5 27B 두뇌 유지)
+    # 2. Render 슬립 방지 셀프 핑 데몬 가동 (10분 주기 상시 유지)
+    threading.Thread(target=keep_alive_ping, daemon=True).start()
+
+    # 3. 덕영님 피클 봇 워커 시작 (Qwen 2.5 27B 두뇌)
     worker_deokyeong = TelegramBotWorker(
         token=DEOKYEONG_BOT_TOKEN,
         display_name="덕영 피클",
@@ -275,7 +318,7 @@ def main():
     )
     worker_deokyeong.start()
 
-    # 2. 아내분 피클 봇 워커 시작 (OpenAI GPT-OSS 120B 대형 두뇌 적용)
+    # 4. 아내분 피클 봇 워커 시작 (OpenAI GPT-OSS 120B 대형 두뇌)
     worker_wife = TelegramBotWorker(
         token=WIFE_BOT_TOKEN,
         display_name="아내 피클",
