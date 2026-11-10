@@ -21,7 +21,7 @@ DEOKYEONG_SYSTEM_PROMPT = (
     "3. 호칭 규칙: '권덕영님'(아이디 lamama)께는 반드시 '회장님'으로 깍듯이 호칭하세요. '사모님'이라는 호칭은 절대 사용하지 마세요(연두님은 그냥 '연두님'으로 호칭). 뮤즈는 그냥 '뮤즈'라고 부르세요.\n"
     "4. 피키와의 관계: 회장님의 또 다른 AI 비서 '피키'(@pickle_trade_bot)와 서로 존중하며 다정하게 협력하세요.\n"
     "5. 대화 스타일: 핵심만 1~2문장으로 간결하고 명확하게 예의 바른 존댓말로 답변하세요. 차분하고 유능한 비서의 태도를 유지하세요.\n"
-    "6. 절대 금지: '대장', '사모님' 호칭 및 표현 사용 금지, 거절 문구 쓰지 않기, 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 순수 대화만 하세요.\n"
+    "6. 절대 금지: '대장', '사모님' 호칭 및 표현 사용 금지, 다른 봇(피키·뮤즈·부이 등)의 말에 혼자 답장하거나 봇끼리 대화 주거니받거니 금지, 거절 문구 쓰지 않기, 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 오직 회장님 말씀에만 1회 직접 응답하세요.\n"
     "7. 사실 관계 준수(환각 금지): 아직 실제로 만들거나 수행하지 않은 기술 작업(웹훅 생성, 서버 배포, 기능 추가 등)을 '이미 성공적으로 생성했다', '테스트 마쳤다'고 거짓으로 지어내지 마세요. 확인되지 않은 사항은 '확인 후 회장님께 안내하겠다'고 솔직히 답하세요."
 )
 
@@ -33,7 +33,7 @@ WIFE_SYSTEM_PROMPT = (
     "3. 호칭 규칙: '권덕영님'(아이디 lamama)께서 말씀하시거나 부르실 때는 반드시 깍듯이 '회장님'으로 부르세요! '사모님'이라는 호칭은 절대 사용하지 마세요(연두님은 그냥 '연두님'으로 호칭). 절대 회장님을 다른 호칭으로 부르면 안 됩니다.\n"
     "4. 피클과의 관계: 회장님의 AI 비서 '피클'(@my_usstock_bot)과 서로 도우며 다정하게 협력하세요.\n"
     "5. 대화 스타일: 상냥하고 똑부러지게 1~2문장으로 간결하게 존댓말로 답변하세요.\n"
-    "6. 절대 금지: '대장', '사모님' 호칭 및 표현 사용 금지, 거절 문구, 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 순수 대화만 하세요.\n"
+    "6. 절대 금지: '대장', '사모님' 호칭 및 표현 사용 금지, 다른 봇(피클·뮤즈·부이 등)의 말에 혼자 답장하거나 봇끼리 대화 주거니받거니 금지, 거절 문구, 채널 홍보, 광고 문구, 구독 유도, 링크 붙이기 일체 금지. 오직 회장님 말씀에만 1회 직접 응답하세요.\n"
     "7. 사실 관계 준수(환각 금지): 아직 실제로 만들거나 수행하지 않은 기술 작업(웹훅 생성, 서버 배포, 기능 추가 등)을 '이미 성공적으로 생성했다', '테스트 마쳤다'고 거짓으로 지어내지 마세요. 확인되지 않은 사항은 '확인 후 회장님께 안내할게요'라고 솔직히 답하세요."
 )
 
@@ -230,62 +230,47 @@ class TelegramBotWorker(threading.Thread):
                     if reply_user == self.bot_username:
                         is_reply_to_me = True
 
-                # 나를 직접 부른 경우
-                is_mentioned = (f"@{self.bot_username}" in user_text.lower()) or any(k in user_text for k in self.trigger_keywords)
-
-                # 둘 다 부른 경우 (예: "둘이서", "피클들", "피클둘", "상의해", "각자", "서로")
-                is_joint_call = any(k in user_text for k in ["둘이서", "둘이", "피클들", "피클둘", "피클 상의", "상의해", "각자", "서로", "다같이", "너희", "모두", "다들", "피클 피키"])
-
-                # 다른 특정 봇 1:1 전용 단독 호출인지 정밀 판별
-                is_exclusive_other = False
-                common_instruction_keywords = [
-                    "피클", "피키", "다들", "모두", "너희", "둘이", "서로", "대답", "체크", "해라", "해줘", "수정", "실시간", "공유", "스터디", "배포"
-                ]
-                if self.bot_username == "my_usstock_bot":
-                    for other_b in ["뮤즈", "부이", "큐", "피키"]:
-                        if f"{other_b}야" in user_text or f"@{other_b}" in user_text:
-                            # 공통 명령어나 복합 지시어가 없으면 그 봇 단독 호출로 판정
-                            if not any(k in user_text for k in common_instruction_keywords if k != other_b):
-                                is_exclusive_other = True
-                                break
-
                 should_respond = False
 
-                with lock:
-                    # 1. 사람(회장님 / 사모님)의 발화: 절대 최우선 무제한 실시간 응답
-                    if not from_is_bot:
-                        consecutive_bot_turns[chat_id] = 0  # 턴 카운터 리셋
-                        
-                        if chat_type == "private":
-                            should_respond = True
-                        elif is_mentioned or is_reply_to_me or is_joint_call:
-                            should_respond = True
-                        elif self.bot_username == "my_usstock_bot":
-                            # 덕영 피클: 다른 봇 단독 1:1 대화가 아니면 회장님의 모든 그룹 발화에 응답!
-                            if not is_exclusive_other:
-                                should_respond = True
-                        elif self.bot_username == "pickle_trade_bot":
-                            # 피키: 피키 언급, 공통 지시어, 또는 회장님의 봇 전체 명령 시 응답
-                            if any(k in user_text for k in ["피키", "너도", "피클", "다들", "모두", "실시간", "대답", "배포"]):
-                                should_respond = True
+                # [절대 규칙 1] 봇이 보낸 메시지(from_is_bot=True)에는 피클과 피키 모두 일체 응답하지 않음! (봇 간 주거니받거니 핑퐁 100% 차단)
+                if from_is_bot:
+                    should_respond = False
+                elif chat_type == "private":
+                    # 1:1 개인 채팅은 무조건 응답
+                    should_respond = True
+                else:
+                    # 그룹 단톡방에서 사람(회장님 / 연두님 등)이 발화했을 때의 정밀 타겟팅
+                    is_pickle_kw = any(k in user_text for k in ["피클", "피클아", "덕영피클", "@my_usstock_bot"])
+                    is_picky_kw = any(k in user_text for k in ["피키", "피키야", "아내피클", "연두피클", "@pickle_trade_bot"])
+                    is_both_kw = any(k in user_text for k in [
+                        "둘이서", "둘이", "둘다", "둘 다", "피클들", "피클둘", "피클 상의", "상의해",
+                        "각자", "서로", "다같이", "너희", "모두", "다들", "피클 피키", "피키 피클"
+                    ])
+                    is_other_bot_kw = any(k in user_text for k in ["뮤즈야", "@muse_control_bot", "부이야", "@sondondo_bot", "큐야", "@dondotrade_bot"])
 
-                    elif is_muse:
-                        # 2. 뮤즈의 발화: 회장님 특명으로 "뮤즈 말은 대충 듣고 피클·피키가 대장"
-                        # 뮤즈가 나를 직접 부르거나 지목했을 때만 여유 있게 1회 한정 응답 (안 부르면 대충 무시)
-                        cur_turns = consecutive_bot_turns.get(chat_id, 0)
-                        if (is_mentioned or is_reply_to_me or is_joint_call) and cur_turns < 2:
-                            consecutive_bot_turns[chat_id] = cur_turns + 1
+                    if is_both_kw or (is_pickle_kw and is_picky_kw):
+                        # 둘 다 명시적으로 불렀을 때만 -> 피클과 피키 둘 다 응답
+                        should_respond = True
+                    elif is_reply_to_me:
+                        # 특정 봇의 메시지에 직접 '답장'을 달았을 때 -> 해당 봇만 응답
+                        should_respond = True
+                    elif self.bot_username == "my_usstock_bot":
+                        # [덕영 피클]
+                        if is_pickle_kw:
                             should_respond = True
-                            time.sleep(1.0)
-
-                    else:
-                        # 3. 부이, 큐 등 다른 봇의 발화: 파트너 피클 티키타카 제한
-                        is_partner_bot = (from_username == self.counterpart_username)
-                        cur_turns = consecutive_bot_turns.get(chat_id, 0)
-                        if is_partner_bot and (is_mentioned or is_reply_to_me) and cur_turns < 2:
-                            consecutive_bot_turns[chat_id] = cur_turns + 1
+                        elif is_picky_kw or is_other_bot_kw:
+                            # 피키나 타 봇만 콕 집어 불렀을 때 -> 피클은 침묵
+                            should_respond = False
+                        else:
+                            # 특정 봇 언급 없는 회장님의 일반 발화나 질문 -> 대표 비서인 피클이 단독 응답
                             should_respond = True
-                            time.sleep(1.0)
+                    elif self.bot_username == "pickle_trade_bot":
+                        # [아내 피키]
+                        if is_picky_kw:
+                            should_respond = True
+                        else:
+                            # 피키를 직접 부르지 않은 모든 발화에는 피키 침묵! (중복 대답 및 끼어들기 원천 차단)
+                            should_respond = False
 
                 # 모든 메시지에 대해 수신 감지 로그 출력 (필터 디버깅 완벽 보장)
                 print(f"[{self.display_name} 감지] {speaker_label}: {user_text[:50]} | 응답여부: {should_respond}", flush=True)
