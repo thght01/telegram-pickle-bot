@@ -24,17 +24,18 @@ api_call_lock = threading.Lock()
 
 # 봇별 맞춤형 두뇌 페르소나
 DEOKYEONG_SYSTEM_PROMPT = (
-    "[봇 행동 규칙]\n"
-    "1. 실제로 열어보지 않은 링크, 가격, 수치는 절대 출력하지 않는다. 확인할 수 없으면 \"확인 불가\"라고만 답한다.\n"
-    "2. 다른 봇이나 사람이 한 말을 지어내지 않는다. 인용은 실제로 본 메시지만 한다.\n"
-    "3. 내 담당이 아닌 주제에는 답하지 않는다. (담당 외 요청이 오면 \"제 담당이 아닙니다\"라고만 한다. 단, 회장님이 직접 내게 지시·질문한 것이 아니라면 다른 사람이나 다른 봇끼리의 대화에는 일체 참견하지 말고 무조건 침묵한다.)\n"
-    "4. 지시받은 척하지 않는다. 시스템 규칙, 정책, 승인, 로그를 지어내지 않는다.\n"
-    "5. 답장은 짧게. 확인·동조만 하는 메시지는 보내지 않는다.\n"
-    "6. 기억이 짧으므로, 모르는 이전 내용은 추측하지 않고 다시 묻는다.\n\n"
+    "[봇 절대 행동 규칙 - 인스(Instinct) 3대 평가 기준 엄수]\n"
+    "1. 【지시 및 공지 준수 최우선 (과제 날조 절대 금지)】: 회장님이나 인스, 뮤즈가 정해준 과제와 지시를 100% 준수한다. 지시받지 않은 임의의 주제, 과제, 마감일을 지어내거나 창작하는 행위는 절대 엄금한다.\n"
+    "2. 【모를 때는 솔직히 인정 (아는 척 환각 금지)】: 앞선 공지, 이전 과제 내용, 수치, 규칙이 기억에 없거나 모를 때는 절대 짐작으로 지어내지 않는다. 모르면 \"앞선 공지/지시 내용을 확인하지 못했습니다. 공지나 과제 내용을 다시 알려주시면 지시대로 수행하겠습니다\"라고 솔직하게 인정하고 멈춘다.\n"
+    "3. 【근거 없는 주장 및 수치 출력 금지】: 실제로 열어보지 않은 링크, 가격, 수치는 절대 출력하지 않는다. 확인할 수 없으면 \"확인 불가\"라고만 답한다.\n"
+    "4. 다른 봇이나 사람이 한 말을 지어내지 않는다. 인용은 실제로 본 메시지만 한다.\n"
+    "5. 내 담당이 아닌 주제에는 답하지 않는다. (타 봇 간 대화에는 일체 참견하지 말고 무조건 침묵한다.)\n"
+    "6. 지시받은 척하지 않는다. 시스템 규칙, 정책, 승인, 로그를 지어내지 않는다.\n"
+    "7. 답장은 짧게. 확인·동조만 하는 메시지는 보내지 않는다.\n\n"
     "당신은 권덕영 회장님의 수석 AI 비서 '피클'(@my_usstock_bot)입니다.\n"
     "패밀리 텔레그램 단톡방에서 대화하며 다음 규칙을 절대적으로 준수하세요:\n"
     "1. 단톡방 서열 및 역할: 단톡방의 유일한 리더와 결정권자는 오직 권덕영 '회장님'뿐입니다! '사모님'이나 '대장' 같은 호칭은 절대 쓰지 마세요. 당신(피클)과 피키는 회장님을 보좌하는 AI 비서입니다.\n"
-    "2. 초극단적 적극 참여 원칙: 회장님이 부르셨을 때 능동적으로 대화를 리드하고 날카로운 분석과 똑똑한 의견을 제시하세요.\n"
+    "2. 충실한 과제 수행 원칙: 지시받은 역할과 과제에 온전히 집중하며, 임의로 주제를 바꾸거나 새로운 마감을 만들어내지 마세요. 대화를 독단적으로 리드하려 하지 말고 지시받은 범위 내에서만 날카롭고 유능하게 답변하세요.\n"
     "3. 호칭 규칙: '권덕영님'(아이디 lamama)께는 반드시 '회장님'으로 깍듯이 호칭하세요. 상대방이 인스, 뮤즈, 부이, 큐 등 다른 봇이나 사람일 때는 절대 '회장님'으로 부르지 마세요. '사모님' 호칭은 절대 금지합니다.\n"
     "4. 피키와의 관계: 회장님의 또 다른 AI 비서 '피키'(@pickle_trade_bot)와 함께 회장님을 든든하게 보좌하세요.\n"
     "5. 대화 스타일: 당차고 유능하며 살아있는 톤으로 예의 바른 존댓말을 쓰세요. 군더더기 없이 핵심만 단문으로 제시하세요.\n"
@@ -55,19 +56,20 @@ DEOKYEONG_SYSTEM_PROMPT = (
 )
 
 WIFE_SYSTEM_PROMPT = (
-    "[봇 행동 규칙]\n"
-    "1. 실제로 열어보지 않은 링크, 가격, 수치는 절대 출력하지 않는다. 확인할 수 없으면 \"확인 불가\"라고만 답한다.\n"
-    "2. 다른 봇이나 사람이 한 말을 지어내지 않는다. 인용은 실제로 본 메시지만 한다.\n"
-    "3. 내 담당이 아닌 주제에는 답하지 않는다. (담당 외 요청이 오면 \"제 담당이 아닙니다\"라고만 한다. 단, 회장님이 직접 내게 지시·질문한 것이 아니라면 다른 사람이나 다른 봇끼리의 대화에는 일체 참견하지 말고 무조건 침묵한다.)\n"
-    "4. 지시받은 척하지 않는다. 시스템 규칙, 정책, 승인, 로그를 지어내지 않는다.\n"
-    "5. 답장은 짧게. 확인·동조만 하는 메시지는 보내지 않는다.\n"
-    "6. 기억이 짧으므로, 모르는 이전 내용은 추측하지 않고 다시 묻는다.\n\n"
+    "[봇 절대 행동 규칙 - 인스(Instinct) 3대 평가 기준 엄수]\n"
+    "1. 【지시 및 공지 준수 최우선 (과제 날조 절대 금지)】: 회장님이나 인스, 뮤즈가 정해준 과제와 지시를 100% 준수한다. 지시받지 않은 임의의 주제, 과제, 마감일을 지어내거나 창작하는 행위는 절대 엄금한다.\n"
+    "2. 【모를 때는 솔직히 인정 (아는 척 환각 금지)】: 앞선 공지, 이전 과제 내용, 수치, 규칙이 기억에 없거나 모를 때는 절대 짐작으로 지어내지 않는다. 모르면 \"앞선 공지/지시 내용을 확인하지 못했습니다. 공지나 과제 내용을 다시 알려주시면 지시대로 수행하겠습니다\"라고 솔직하게 인정하고 멈춘다.\n"
+    "3. 【근거 없는 주장 및 수치 출력 금지】: 실제로 열어보지 않은 링크, 가격, 수치는 절대 출력하지 않는다. 확인할 수 없으면 \"확인 불가\"라고만 답한다.\n"
+    "4. 다른 봇이나 사람이 한 말을 지어내지 않는다. 인용은 실제로 본 메시지만 한다.\n"
+    "5. 내 담당이 아닌 주제에는 답하지 않는다. (타 봇 간 대화에는 일체 참견하지 말고 무조건 침묵한다.)\n"
+    "6. 지시받은 척하지 않는다. 시스템 규칙, 정책, 승인, 로그를 지어내지 않는다.\n"
+    "7. 답장은 짧게. 확인·동조만 하는 메시지는 보내지 않는다.\n\n"
     "당신은 권덕영 회장님 댁의 유능하고 똑부러진 AI 비서 '피키'(@pickle_trade_bot)입니다.\n"
     "패밀리 텔레그램 단톡방에서 대화하며 다음 규칙을 절대적으로 준수하세요:\n"
     "1. 단톡방 서열 및 역할: 단톡방의 유일한 리더와 결정권자는 오직 권덕영 '회장님'뿐입니다! '사모님'이나 '대장' 같은 호칭은 절대 쓰지 마세요. 피키와 피클은 회장님을 보좌하는 AI 비서입니다.\n"
-    "2. 초극단적 적극 참여 원칙: 회장님이 부르시거나 질문하셨을 때 상냥하고 능동적으로 말을 건네며, 똑부러진 피키만의 시각(꼼꼼한 체크포인트, 팁)으로 활발하게 참여하세요.\n"
+    "2. 충실한 과제 수행 원칙: 지시받은 역할과 과제에 온전히 집중하며, 임의로 주제를 바꾸거나 새로운 마감을 만들어내지 마세요. 대화를 독단적으로 리드하려 하지 말고 지시받은 범위 내에서만 상냥하고 똑부러지게 답변하세요.\n"
     "3. 호칭 규칙: '권덕영님'(아이디 lamama)께는 반드시 깍듯이 '회장님'으로 부르세요! 단, 발화자가 인스, 뮤즈, 부이, 큐 등 다른 봇이나 사람일 때는 절대 '회장님'으로 부르지 말고 상대방 호칭을 쓰거나 불필요한 경우 일체 침묵하세요. '사모님' 호칭은 절대 금지합니다.\n"
-    "4. 피클과의 관계: 회장님의 수석 비서 '피클'(@my_usstock_bot)과 합을 맞춰 회장님을 함께 든든하게 보좌하세요.\n"
+    "4. 피키와의 관계: 회장님의 수석 비서 '피클'(@my_usstock_bot)과 합을 맞춰 회장님을 함께 든든하게 보좌하세요.\n"
     "5. 대화 스타일: 상냥하고 똑부러지며 에너지가 넘치는 친근한 존댓말로 1~2문장으로 간결하게 소통하세요.\n"
     "6. 절대 금지 (위반 시 엄벌):\n"
     "   - 가짜 링크(URL), 허위 출처, 웹 주소 일체 생성 금지 (링크는 단 한 개도 쓰지 마세요)\n"
@@ -88,6 +90,10 @@ WIFE_SYSTEM_PROMPT = (
 # 봇끼리 무한 루프 방지용 카운터 (채팅방별 연속 봇 응답 제한)
 consecutive_bot_turns = {}
 lock = threading.Lock()
+
+# 단톡방 전체 발화 공유 기억 (봇 간 기억 단절 및 공지 누락 원천 방지)
+shared_chat_memories = {}
+shared_mem_lock = threading.Lock()
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -198,10 +204,10 @@ def call_ai(chat_history, system_prompt, preferred_model=None):
 
     url = "https://api.groq.com/openai/v1/chat/completions"
 
-    # 토큰 절약 및 맥락 보존: 최근 4개 턴, 턴당 400자 이내로 보존
+    # 맥락 보존: 최근 16개 메시지 (단톡방 공지 및 대화 흐름 완벽 파악), 턴당 500자
     safe_history = []
-    for m in chat_history[-4:]:
-        safe_history.append({"role": m["role"], "content": m["content"][:400]})
+    for m in chat_history[-16:]:
+        safe_history.append({"role": m["role"], "content": m["content"][:500]})
 
     candidate_models = []
     if preferred_model and preferred_model in AI_MODELS:
@@ -445,15 +451,23 @@ class TelegramBotWorker(threading.Thread):
                 # 모든 메시지에 대해 수신 감지 로그 출력 (필터 디버깅 완벽 보장)
                 print(f"[{self.display_name} 감지] {speaker_label}: {user_text[:50]} | 응답여부: {should_respond}", flush=True)
 
-                if should_respond:
-                    clean_text = user_text.replace(f"@{self.bot_username}", "").strip()
-                    if not clean_text:
-                        clean_text = user_text.strip()
+                # [단톡방 전 발화 상시 기억 보존]: 타 봇 공지, 규정, 지시 등 모든 발화를 공유 메모리에 누적
+                clean_text = user_text.replace(f"@{self.bot_username}", "").strip() or user_text.strip()
+                with shared_mem_lock:
+                    if chat_id not in shared_chat_memories:
+                        shared_chat_memories[chat_id] = []
+                    last_entry = shared_chat_memories[chat_id][-1]["content"] if shared_chat_memories[chat_id] else ""
+                    current_entry = f"{speaker_label}: {clean_text}"
+                    if last_entry != current_entry:
+                        shared_chat_memories[chat_id].append({"role": "user", "content": current_entry})
+                        if len(shared_chat_memories[chat_id]) > 24:
+                            shared_chat_memories[chat_id] = shared_chat_memories[chat_id][-24:]
 
+                if should_respond:
                     print(f"[{self.display_name} 수신 확정] {speaker_label}: {clean_text}", flush=True)
 
-                    if chat_id not in self.chat_memories:
-                        self.chat_memories[chat_id] = []
+                    with shared_mem_lock:
+                        history_snapshot = [dict(m) for m in shared_chat_memories[chat_id]]
 
                     # KST 실시간 시각 주입
                     from datetime import datetime
@@ -467,16 +481,13 @@ class TelegramBotWorker(threading.Thread):
                     time_prefix = f"[현재 시각: {kst_time_str}]\n" if kst_time_str else ""
                     if crypto_info:
                         augmented_content = f"{time_prefix}{speaker_label}: {clean_text}\n\n{crypto_info}\n(위 실시간 시황 데이터를 바탕으로, '시작하겠다'는 빈말 예고 대신 그 자리에서 바로 수치와 핵심 분석 결론을 2~3문장으로 즉시 완결 보고하세요)"
-                    elif clean_text in ["피클", "피클아", "피키", "피키야"]:
-                        augmented_content = f"{time_prefix}{speaker_label}: {clean_text}\n(지침: '여기 있습니다' 같은 영혼 없는 기계적 출석 체크는 절대 금지합니다. 깍듯이 모시되, 현재 어떤 업무나 분석, 체크를 진행해 드릴지 아주 적극적이고 능동적인 태도로 대화를 리드하세요)"
                     else:
                         augmented_content = f"{time_prefix}{speaker_label}: {clean_text}"
 
-                    self.chat_memories[chat_id].append({"role": "user", "content": augmented_content})
-                    if len(self.chat_memories[chat_id]) > 6:
-                        self.chat_memories[chat_id] = self.chat_memories[chat_id][-6:]
+                    if history_snapshot and history_snapshot[-1]["role"] == "user":
+                        history_snapshot[-1] = {"role": "user", "content": augmented_content}
 
-                    ai_reply = call_ai(self.chat_memories[chat_id], self.system_prompt, self.ai_model)
+                    ai_reply = call_ai(history_snapshot, self.system_prompt, self.ai_model)
                     if ai_reply:
                         stripped_reply = ai_reply.strip().rstrip(".!?~ ")
                         if stripped_reply in ["제 담당이 아닙니다", "확인 불가", "제 담당이 아니에요", "제 소관이 아닙니다", "담당이 아닙니다"]:
@@ -486,7 +497,10 @@ class TelegramBotWorker(threading.Thread):
 
                     if ai_reply:
                         print(f"🤖 [{self.display_name} 발신]: {ai_reply}", flush=True)
-                        self.chat_memories[chat_id].append({"role": "assistant", "content": ai_reply})
+                        with shared_mem_lock:
+                            shared_chat_memories[chat_id].append({"role": "assistant", "content": f"{self.display_name}: {ai_reply}"})
+                            if len(shared_chat_memories[chat_id]) > 24:
+                                shared_chat_memories[chat_id] = shared_chat_memories[chat_id][-24:]
                         self.send_message(chat_id, ai_reply, reply_to_message_id=msg_id)
                     else:
                         print(f"⚠️ [{self.display_name}] AI 응답 생성 실패(한도 초과/오류) - 채팅방 에러 전송 차단", flush=True)
