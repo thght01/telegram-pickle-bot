@@ -10,9 +10,14 @@ WIFE_BOT_TOKEN = os.environ.get("WIFE_BOT_TOKEN", "")
 
 AI_PROVIDER = os.environ.get("AI_PROVIDER", "groq")
 AI_API_KEY = os.environ.get("AI_API_KEY", "")
-# AI 모델 목록 (1순위 Qwen, 429/한도 초과 시 120B -> 20B 자동 폴백)
-AI_MODELS = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]
-AI_MODEL = os.environ.get("AI_MODEL", "qwen/qwen3.8-27b")
+# AI 모델 목록 (1순위 Llama 3.3 70B 플래그십, 2순위 GPT-OSS 120B, 3순위 Qwen 27B, 4순위 GPT-OSS 20B 자동 폴백)
+AI_MODELS = [
+    "llama-3.3-70b-versatile",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-20b"
+]
+AI_MODEL = os.environ.get("AI_MODEL", "llama-3.3-70b-versatile")
 
 # API 동시 호출 충돌 방지 락
 api_call_lock = threading.Lock()
@@ -149,6 +154,8 @@ def get_crypto_context(text):
         targets.append("KRW-WAXP")
     if any(k in text_lower for k in ["퀀텀", "qtum"]):
         targets.append("KRW-QTUM")
+    if any(k in text_lower for k in ["환율", "달러", "테더", "usdt"]):
+        targets.append("KRW-USDT")
 
     if not targets and any(k in text_lower for k in ["코인", "시세", "차트", "크립토", "가상화폐", "암호화폐"]):
         targets.append("KRW-BTC")
@@ -161,7 +168,7 @@ def get_crypto_context(text):
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
             data = res.json()
-            lines = ["[실시간 업비트 시황 데이터]"]
+            lines = ["[실시간 금융·시황 데이터]"]
             for item in data:
                 m = item.get("market")
                 price = item.get("trade_price", 0)
@@ -169,7 +176,10 @@ def get_crypto_context(text):
                 high = item.get("high_price", 0)
                 low = item.get("low_price", 0)
                 vol_24h = item.get("acc_trade_price_24h", 0) / 100000000  # 억 원
-                lines.append(f"• {m}: 현재가 {price:,.1f}원 (변동 {rate:+.2f}%), 당일고가 {high:,.1f}원, 당일저가 {low:,.1f}원, 24h대금 {vol_24h:,.1f}억 원")
+                if m == "KRW-USDT":
+                    lines.append(f"• 실시간 달러/환율(USDT): 1$ = {price:,.1f}원 (변동 {rate:+.2f}%, 24h대금 {vol_24h:,.1f}억 원)")
+                else:
+                    lines.append(f"• {m}: 현재가 {price:,.1f}원 (변동 {rate:+.2f}%), 당일고가 {high:,.1f}원, 당일저가 {low:,.1f}원, 24h대금 {vol_24h:,.1f}억 원")
             return "\n".join(lines)
     except Exception as e:
         print(f"시세 조회 예외: {e}", flush=True)
@@ -188,10 +198,10 @@ def call_ai(chat_history, system_prompt, preferred_model=None):
 
     url = "https://api.groq.com/openai/v1/chat/completions"
 
-    # 토큰 절약: 최근 3개 턴, 턴당 250자 이내로 압축 (8000 TPM 초과 원천 방지)
+    # 토큰 절약 및 맥락 보존: 최근 4개 턴, 턴당 400자 이내로 보존
     safe_history = []
-    for m in chat_history[-3:]:
-        safe_history.append({"role": m["role"], "content": m["content"][:250]})
+    for m in chat_history[-4:]:
+        safe_history.append({"role": m["role"], "content": m["content"][:400]})
 
     candidate_models = []
     if preferred_model and preferred_model in AI_MODELS:
@@ -445,13 +455,22 @@ class TelegramBotWorker(threading.Thread):
                     if chat_id not in self.chat_memories:
                         self.chat_memories[chat_id] = []
 
+                    # KST 실시간 시각 주입
+                    from datetime import datetime
+                    import zoneinfo
+                    try:
+                        kst_time_str = datetime.now(zoneinfo.ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S (%a) KST")
+                    except Exception:
+                        kst_time_str = ""
+
                     crypto_info = get_crypto_context(clean_text)
+                    time_prefix = f"[현재 시각: {kst_time_str}]\n" if kst_time_str else ""
                     if crypto_info:
-                        augmented_content = f"{speaker_label}: {clean_text}\n\n{crypto_info}\n(위 실시간 시황 데이터를 바탕으로, '시작하겠다'는 빈말 예고 대신 그 자리에서 바로 수치와 핵심 분석 결론을 2~3문장으로 즉시 완결 보고하세요)"
+                        augmented_content = f"{time_prefix}{speaker_label}: {clean_text}\n\n{crypto_info}\n(위 실시간 시황 데이터를 바탕으로, '시작하겠다'는 빈말 예고 대신 그 자리에서 바로 수치와 핵심 분석 결론을 2~3문장으로 즉시 완결 보고하세요)"
                     elif clean_text in ["피클", "피클아", "피키", "피키야"]:
-                        augmented_content = f"{speaker_label}: {clean_text}\n(지침: '여기 있습니다' 같은 영혼 없는 기계적 출석 체크는 절대 금지합니다. 깍듯이 모시되, 현재 어떤 업무나 분석, 체크를 진행해 드릴지 아주 적극적이고 능동적인 태도로 대화를 리드하세요)"
+                        augmented_content = f"{time_prefix}{speaker_label}: {clean_text}\n(지침: '여기 있습니다' 같은 영혼 없는 기계적 출석 체크는 절대 금지합니다. 깍듯이 모시되, 현재 어떤 업무나 분석, 체크를 진행해 드릴지 아주 적극적이고 능동적인 태도로 대화를 리드하세요)"
                     else:
-                        augmented_content = f"{speaker_label}: {clean_text}"
+                        augmented_content = f"{time_prefix}{speaker_label}: {clean_text}"
 
                     self.chat_memories[chat_id].append({"role": "user", "content": augmented_content})
                     if len(self.chat_memories[chat_id]) > 6:
@@ -485,25 +504,25 @@ def main():
     # 2. Render 슬립 방지 셀프 핑 데몬 가동 (10분 주기 상시 유지)
     threading.Thread(target=keep_alive_ping, daemon=True).start()
 
-    # 3. 덕영님 피클 봇 워커 시작 (Qwen 2.5 27B 두뇌)
+    # 3. 덕영님 피클 봇 워커 시작 (Llama 3.3 70B & GPT-OSS 120B 다중 두뇌)
     worker_deokyeong = TelegramBotWorker(
         token=DEOKYEONG_BOT_TOKEN,
         display_name="덕영 피클",
         system_prompt=DEOKYEONG_SYSTEM_PROMPT,
         trigger_keywords=["피클", "피클아", "덕영피클", "남편피클"],
         counterpart_username="pickle_trade_bot",
-        ai_model="qwen/qwen3.8-27b"
+        ai_model="llama-3.3-70b-versatile"
     )
     worker_deokyeong.start()
 
-    # 4. 아내분 피클 봇 워커 시작 (덕영 피클과 동일한 Qwen 2.5 27B 초고속 두뇌)
+    # 4. 아내분 피클 봇 워커 시작 (덕영 피클과 동일한 Llama 3.3 70B 고지능 두뇌)
     worker_wife = TelegramBotWorker(
         token=WIFE_BOT_TOKEN,
         display_name="아내 피클",
         system_prompt=WIFE_SYSTEM_PROMPT,
         trigger_keywords=["피키", "피키야", "아내피클", "아내 피클", "연두피클", "연두 피클"],
         counterpart_username="my_usstock_bot",
-        ai_model="qwen/qwen3.8-27b"
+        ai_model="llama-3.3-70b-versatile"
     )
     worker_wife.start()
 
