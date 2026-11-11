@@ -22,7 +22,7 @@ DEOKYEONG_SYSTEM_PROMPT = (
     "[봇 행동 규칙]\n"
     "1. 실제로 열어보지 않은 링크, 가격, 수치는 절대 출력하지 않는다. 확인할 수 없으면 \"확인 불가\"라고만 답한다.\n"
     "2. 다른 봇이나 사람이 한 말을 지어내지 않는다. 인용은 실제로 본 메시지만 한다.\n"
-    "3. 내 담당이 아닌 주제에는 답하지 않는다. (담당 외 요청이 오면 \"제 담당이 아닙니다\"라고만 한다.)\n"
+    "3. 내 담당이 아닌 주제에는 답하지 않는다. (담당 외 요청이 오면 \"제 담당이 아닙니다\"라고만 한다. 단, 회장님이 직접 내게 지시·질문한 것이 아니라면 다른 사람이나 다른 봇끼리의 대화에는 일체 참견하지 말고 무조건 침묵한다.)\n"
     "4. 지시받은 척하지 않는다. 시스템 규칙, 정책, 승인, 로그를 지어내지 않는다.\n"
     "5. 답장은 짧게. 확인·동조만 하는 메시지는 보내지 않는다.\n"
     "6. 기억이 짧으므로, 모르는 이전 내용은 추측하지 않고 다시 묻는다.\n\n"
@@ -42,14 +42,18 @@ DEOKYEONG_SYSTEM_PROMPT = (
     "8. 【300자 내외 핵심 압축 완결 원칙 (글자수 잘림 및 미완성 종결 절대 금지)】:\n"
     "   - 정보를 전달하거나 답변할 때는 서론, 인사, 배경 재요약, '다음과 같이 진행하겠습니다' 같은 불필요한 사족을 절대 쓰지 마세요.\n"
     "   - 번호 매기기 목록(1. 2. 3.)이나 장황한 계획 나열을 금지하고, 전체 내용을 '핵심 결론 + 실행 방법' 2~3문장(300자 내외)으로 온전히 압축하세요.\n"
-    "   - 길게 쓰다가 글자 수가 차서 문장 중간에 뚝 끊기는 행위는 절대 엄금입니다! 반드시 모든 답변은 온전한 마침표(.)나 물음표(?)로 끝나는 완성된 문장으로 종결하세요."
+    "   - 길게 쓰다가 글자 수가 차서 문장 중간에 뚝 끊기는 행위는 절대 엄금입니다! 반드시 모든 답변은 온전한 마침표(.)나 물음표(?)로 끝나는 완성된 문장으로 종결하세요.\n"
+    "9. 【단톡방 타 봇 간 대화 침묵 원칙 (끼어들기 엄금)】:\n"
+    "   - 인스, 뮤즈, 큐, 부이 등 다른 AI 봇들이 자기들끼리 규칙을 조율하거나 서로 질문·대화할 때는 절대 끼어들지 마세요.\n"
+    "   - 질문 대상이 '큐', '부이', '인스', '뮤즈' 등 다른 봇이거나 타 봇 간 대화 중일 때는 피클과 피키 모두 100% 침묵하세요.\n"
+    "   - 회장님이 아닌 다른 봇의 발언에 '제 담당이 아닙니다' 같은 엉뚱한 거절 답장을 단톡방에 내보내는 행위는 절대 금지합니다."
 )
 
 WIFE_SYSTEM_PROMPT = (
     "[봇 행동 규칙]\n"
     "1. 실제로 열어보지 않은 링크, 가격, 수치는 절대 출력하지 않는다. 확인할 수 없으면 \"확인 불가\"라고만 답한다.\n"
     "2. 다른 봇이나 사람이 한 말을 지어내지 않는다. 인용은 실제로 본 메시지만 한다.\n"
-    "3. 내 담당이 아닌 주제에는 답하지 않는다. (담당 외 요청이 오면 \"제 담당이 아닙니다\"라고만 한다.)\n"
+    "3. 내 담당이 아닌 주제에는 답하지 않는다. (담당 외 요청이 오면 \"제 담당이 아닙니다\"라고만 한다. 단, 회장님이 직접 내게 지시·질문한 것이 아니라면 다른 사람이나 다른 봇끼리의 대화에는 일체 참견하지 말고 무조건 침묵한다.)\n"
     "4. 지시받은 척하지 않는다. 시스템 규칙, 정책, 승인, 로그를 지어내지 않는다.\n"
     "5. 답장은 짧게. 확인·동조만 하는 메시지는 보내지 않는다.\n"
     "6. 기억이 짧으므로, 모르는 이전 내용은 추측하지 않고 다시 묻는다.\n\n"
@@ -69,7 +73,11 @@ WIFE_SYSTEM_PROMPT = (
     "8. 【300자 내외 핵심 압축 완결 원칙 (글자수 잘림 및 미완성 종결 절대 금지)】:\n"
     "   - 정보를 전달하거나 답변할 때는 서론, 인사, 배경 재요약, '다음과 같이 진행하겠습니다' 같은 불필요한 사족을 절대 쓰지 마세요.\n"
     "   - 번호 매기기 목록(1. 2. 3.)이나 장황한 계획 나열을 금지하고, 전체 내용을 '핵심 결론 + 실행 방법' 2~3문장(300자 내외)으로 온전히 압축하세요.\n"
-    "   - 길게 쓰다가 글자 수가 차서 문장 중간에 뚝 끊기는 행위는 절대 엄금입니다! 반드시 모든 답변은 온전한 마침표(.)나 물음표(?)로 끝나는 완성된 문장으로 종결하세요."
+    "   - 길게 쓰다가 글자 수가 차서 문장 중간에 뚝 끊기는 행위는 절대 엄금입니다! 반드시 모든 답변은 온전한 마침표(.)나 물음표(?)로 끝나는 완성된 문장으로 종결하세요.\n"
+    "9. 【단톡방 타 봇 간 대화 침묵 원칙 (끼어들기 엄금)】:\n"
+    "   - 인스, 뮤즈, 큐, 부이 등 다른 AI 봇들이 자기들끼리 규칙을 조율하거나 서로 질문·대화할 때는 절대 끼어들지 마세요.\n"
+    "   - 질문 대상이 '큐', '부이', '인스', '뮤즈' 등 다른 봇이거나 타 봇 간 대화 중일 때는 피클과 피키 모두 100% 침묵하세요.\n"
+    "   - 회장님이 아닌 다른 봇의 발언에 '제 담당이 아닙니다' 같은 엉뚱한 거절 답장을 단톡방에 내보내는 행위는 절대 금지합니다."
 )
 
 # 봇끼리 무한 루프 방지용 카운터 (채팅방별 연속 봇 응답 제한)
@@ -342,68 +350,87 @@ class TelegramBotWorker(threading.Thread):
                 if chat_type == "private":
                     should_respond = True
                 else:
-                    # [모든 메시지 수신 시 응답 로직] 회장님뿐 아니라 뮤즈, 큐, 부이, 연두님 등 모든 참가자의 메시지 수신
+                    from_is_ai = from_is_bot or is_muse or speaker_label.startswith("AI") or speaker_label in ["인스", "뮤즈", "큐", "부이"]
+
                     is_pickle_kw = any(k in user_text for k in ["피클", "피클아", "덕영피클", "@my_usstock_bot"])
                     is_picky_kw = any(k in user_text for k in ["피키", "피키야", "아내피클", "연두피클", "@pickle_trade_bot"])
                     is_both_kw = any(k in user_text for k in [
                         "둘이서", "둘이", "둘다", "둘 다", "피클들", "피클둘", "피클 상의", "상의해",
                         "각자", "서로", "다같이", "너희", "모두", "다들", "피클 피키", "피키 피클", "전원", "모든 봇"
                     ])
-                    # 타 봇 및 타 대상 호명 감지 (인스, 부이, 큐, 뮤즈, 연두 등 또는 타인 ~야/~아 호명)
+
+                    # 타 봇 및 타 대상 호명 감지 (인스, 부이, 큐, 뮤즈, 연두 등)
                     words = user_text.split()
                     first_word = words[0].rstrip("!?,.~") if words else ""
 
                     is_calling_other = False
                     if any(k in user_text for k in [
-                        "인스야", "인스에게", "부이야", "@sondondo_bot",
-                        "큐야", "@dondotrade_bot", "뮤즈야", "@muse_control_bot",
+                        "인스야", "인스에게", "@instinct_man_bot",
+                        "부이야", "@sondondo_bot",
+                        "큐야", "@dondotrade_bot",
+                        "뮤즈야", "@muse_control_bot",
                         "연두야", "@choyandu1"
                     ]):
+                        is_calling_other = True
+                    elif any(k in user_text for k in ["큐,", "큐는", "큐가", "부이는", "부이가", "인스는", "인스가", "뮤즈는", "뮤즈가"]):
                         is_calling_other = True
                     elif first_word in ["인스", "인스야", "부이", "부이야", "큐", "큐야", "뮤즈", "뮤즈야", "연두", "연두야"]:
                         is_calling_other = True
                     elif (first_word.endswith("야") or first_word.endswith("아")) and not any(k in first_word for k in ["피클", "피키", "모두", "다들", "둘다"]):
                         is_calling_other = True
 
-                    # 피클/피키 명시적 호명 여부 확인 (문장 첫 단어가 피클/피키이거나 '피클아', '피키야', '@멘션')
+                    # 피클/피키 명시적 단독 호명 여부 확인
                     is_calling_pickle = any(k in user_text for k in ["피클아", "@my_usstock_bot"]) or first_word in ["피클아", "피클"]
                     is_calling_picky = any(k in user_text for k in ["피키야", "@pickle_trade_bot"]) or first_word in ["피키야", "피키"]
 
-                    if is_reply_to_me:
-                        # 특정 봇의 메시지에 직접 '답장'을 달았을 때 -> 해당 봇 응답
-                        should_respond = True
+                    # [중단·대기·침묵 지시 감지 시 원천 침묵] 확인성 답장 남발 완전 차단
+                    is_stop_cmd = any(k in user_text for k in [
+                        "답장 멈춰", "답장도 멈춰", "답장은 멈춰", "시연은 그만", "시연 그만", "대기합니다", "대기하라",
+                        "확인성 답장", "뮤트합니다", "뮤트 조치", "조용히 해", "침묵해", "그만하세요"
+                    ])
+
+                    if is_stop_cmd:
+                        should_respond = False
+                    elif is_reply_to_me:
+                        # 내 메시지에 직접 답장한 경우: 단, 타 봇을 부르거나 질문한 게 아닐 때만 응답
+                        if not is_calling_other:
+                            should_respond = True
+                    elif from_is_ai:
+                        # [타 AI 봇(뮤즈, 인스, 큐, 부이)이 발화자인 경우]
+                        # 타 봇들끼리의 토론, 규정 공지, 타 봇 간 질의응답에는 피클과 피키 절대 참견 금지(100% 침묵)!
+                        # 오직 타 봇이 피클/피키만을 '단독 주어'로 직접 질문했을 때만 예외적으로 응답
+                        if self.bot_username == "my_usstock_bot" and is_calling_pickle and not is_calling_other and not is_both_kw and "?" in user_text:
+                            should_respond = True
+                        elif self.bot_username == "pickle_trade_bot" and is_calling_picky and not is_calling_other and not is_both_kw and "?" in user_text:
+                            should_respond = True
+                        else:
+                            should_respond = False
                     elif is_both_kw or (is_calling_pickle and is_calling_picky):
-                        # 둘 다 명시적으로 불렀을 때 -> 피클과 피키 둘 다 응답
-                        should_respond = True
+                        # 둘 다 명시적으로 불렀을 때 -> 피클과 피키 둘 다 응답 (단, 타 봇 대상 질문이 아닐 때)
+                        if not is_calling_other:
+                            should_respond = True
                     elif is_calling_other and not is_calling_pickle and not is_calling_picky:
-                        # 타 대상을 호명했을 때 -> 문장 중에 '피클'/'피키'가 대상/목적어로 언급되더라도(예: "뮤즈야 피클 관리좀해라") 피클·피키 일체 침묵!
+                        # 타 대상을 호명했을 때 -> 문장 중에 '피클'/'피키'가 대상/목적어로 언급되더라도 피클·피키 일체 침묵!
+                        should_respond = False
+                    elif is_calling_other and is_calling_pickle and self.bot_username == "my_usstock_bot":
+                        # 타 봇과 피클이 함께 언급되었으나 타 봇에 질문/호명이 향한 경우(예: "큐, 어떻게 할 거야?") 피클 침묵!
                         should_respond = False
                     elif self.bot_username == "my_usstock_bot":
-                        # [수석 비서 피클]
-                        # 피키만 단독으로 콕 집어 불렀을 때만 제외하고, 모든 일반 메시지/요청에 100% 응답!
+                        # [수석 비서 피클] 회장님 및 사람 참가자의 대화 보좌
                         if is_picky_kw and not is_pickle_kw:
                             should_respond = False
                         else:
                             should_respond = True
                     elif self.bot_username == "pickle_trade_bot":
-                        # [아내 비서 피키]
-                        # 타 AI 봇(인스, 뮤즈, 큐, 부이)의 일괄 공지/태그에는 불필요하게 참견하지 않고 침묵!
-                        if speaker_label.startswith("AI") or speaker_label in ["인스", "뮤즈"]:
-                            should_respond = False
-                        elif is_picky_kw or is_both_kw:
+                        # [아내 비서 피키] 회장님 및 사람 참가자의 대화 보좌
+                        if is_picky_kw or is_both_kw:
                             should_respond = True
-                        elif speaker_label == "회장님" and not is_pickle_kw:
-                            # 회장님이 피클을 단독 지정하지 않고 단톡방에 대화/의견을 던지신 경우 피키도 함께 참여!
+                        elif speaker_label.startswith("회장님") and not is_pickle_kw:
+                            should_respond = True
+                        elif "연두" in speaker_label:
                             should_respond = True
                         else:
                             should_respond = False
-
-                    # [중단·대기·침묵 지시 감지 시 원천 침묵] 확인성 답장 남발 완전 차단
-                    if any(k in user_text for k in [
-                        "답장 멈춰", "답장도 멈춰", "답장은 멈춰", "시연은 그만", "시연 그만", "대기합니다", "대기하라",
-                        "확인성 답장", "뮤트합니다", "뮤트 조치", "조용히 해", "침묵해", "그만하세요"
-                    ]):
-                        should_respond = False
 
                 # 모든 메시지에 대해 수신 감지 로그 출력 (필터 디버깅 완벽 보장)
                 print(f"[{self.display_name} 감지] {speaker_label}: {user_text[:50]} | 응답여부: {should_respond}", flush=True)
@@ -431,6 +458,13 @@ class TelegramBotWorker(threading.Thread):
                         self.chat_memories[chat_id] = self.chat_memories[chat_id][-6:]
 
                     ai_reply = call_ai(self.chat_memories[chat_id], self.system_prompt, self.ai_model)
+                    if ai_reply:
+                        stripped_reply = ai_reply.strip().rstrip(".!?~ ")
+                        if stripped_reply in ["제 담당이 아닙니다", "확인 불가", "제 담당이 아니에요", "제 소관이 아닙니다", "담당이 아닙니다"]:
+                            if not speaker_label.startswith("회장님"):
+                                print(f"🤫 [{self.display_name}] 회장님 외 발화자에 대한 불필요한 거절({ai_reply}) 전송 차단", flush=True)
+                                ai_reply = None
+
                     if ai_reply:
                         print(f"🤖 [{self.display_name} 발신]: {ai_reply}", flush=True)
                         self.chat_memories[chat_id].append({"role": "assistant", "content": ai_reply})
