@@ -328,22 +328,28 @@ class TelegramBotWorker(threading.Thread):
 
                     is_calling_other = False
                     if any(k in user_text for k in [
-                        "인스", "인스야", "부이", "부이야", "@sondondo_bot",
+                        "인스야", "인스에게", "부이야", "@sondondo_bot",
                         "큐야", "@dondotrade_bot", "뮤즈야", "@muse_control_bot",
                         "연두야", "@choyandu1"
                     ]):
                         is_calling_other = True
+                    elif first_word in ["인스", "인스야", "부이", "부이야", "큐", "큐야", "뮤즈", "뮤즈야", "연두", "연두야"]:
+                        is_calling_other = True
                     elif (first_word.endswith("야") or first_word.endswith("아")) and not any(k in first_word for k in ["피클", "피키", "모두", "다들", "둘다"]):
                         is_calling_other = True
+
+                    # 피클/피키 명시적 호명 여부 확인 (문장 첫 단어가 피클/피키이거나 '피클아', '피키야', '@멘션')
+                    is_calling_pickle = any(k in user_text for k in ["피클아", "@my_usstock_bot"]) or first_word in ["피클아", "피클"]
+                    is_calling_picky = any(k in user_text for k in ["피키야", "@pickle_trade_bot"]) or first_word in ["피키야", "피키"]
 
                     if is_reply_to_me:
                         # 특정 봇의 메시지에 직접 '답장'을 달았을 때 -> 해당 봇 응답
                         should_respond = True
-                    elif is_both_kw or (is_pickle_kw and is_picky_kw):
+                    elif is_both_kw or (is_calling_pickle and is_calling_picky):
                         # 둘 다 명시적으로 불렀을 때 -> 피클과 피키 둘 다 응답
                         should_respond = True
-                    elif is_calling_other and not is_pickle_kw and not is_picky_kw:
-                        # 인스, 부이, 큐, 뮤즈 등 타 대상을 호명했을 때 -> 피클·피키 일체 침묵!
+                    elif is_calling_other and not is_calling_pickle and not is_calling_picky:
+                        # 타 대상을 호명했을 때 -> 문장 중에 '피클'/'피키'가 대상/목적어로 언급되더라도(예: "뮤즈야 피클 관리좀해라") 피클·피키 일체 침묵!
                         should_respond = False
                     elif self.bot_username == "my_usstock_bot":
                         # [수석 비서 피클]
