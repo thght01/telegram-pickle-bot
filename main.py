@@ -10,7 +10,12 @@ WIFE_BOT_TOKEN = os.environ.get("WIFE_BOT_TOKEN", "")
 
 AI_PROVIDER = os.environ.get("AI_PROVIDER", "groq")
 AI_API_KEY = os.environ.get("AI_API_KEY", "")
+# AI 모델 목록 (1순위 Qwen, 429/한도 초과 시 120B -> 20B 자동 폴백)
+AI_MODELS = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]
 AI_MODEL = os.environ.get("AI_MODEL", "qwen/qwen3.8-27b")
+
+# API 동시 호출 충돌 방지 락
+api_call_lock = threading.Lock()
 
 # 봇별 맞춤형 두뇌 페르소나
 DEOKYEONG_SYSTEM_PROMPT = (
@@ -132,58 +137,65 @@ def get_crypto_context(text):
         print(f"시세 조회 예외: {e}", flush=True)
     return ""
 
-def call_ai(chat_history, system_prompt, model_name=None):
+def call_ai(chat_history, system_prompt, preferred_model=None):
     if not AI_API_KEY:
-        return "⚠️ 클라우드 환경변수(AI_API_KEY)에 API 키가 설정되지 않았습니다!"
+        print("⚠️ 클라우드 환경변수(AI_API_KEY) 누락", flush=True)
+        return None
 
     headers = {
         "Authorization": f"Bearer {AI_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": "telegram-pickle-bot/1.0"
     }
 
     url = "https://api.groq.com/openai/v1/chat/completions"
-    model = model_name or AI_MODEL
 
+    # 토큰 절약: 최근 3개 턴, 턴당 250자 이내로 압축 (8000 TPM 초과 원천 방지)
     safe_history = []
-    for m in chat_history[-5:]:
-        safe_history.append({"role": m["role"], "content": m["content"][:500]})
+    for m in chat_history[-3:]:
+        safe_history.append({"role": m["role"], "content": m["content"][:250]})
 
-    payload = {
-        "model": model,
-        "messages": [{"role": "system", "content": system_prompt}] + safe_history,
-        "temperature": 0.7,
-        "max_tokens": 500
-    }
+    candidate_models = []
+    if preferred_model and preferred_model in AI_MODELS:
+        candidate_models.append(preferred_model)
+    for m in AI_MODELS:
+        if m not in candidate_models:
+            candidate_models.append(m)
 
-    try:
-        res = requests.post(url, headers=headers, json=payload, timeout=30)
-        res_json = res.json()
-        if res.status_code == 200 and "choices" in res_json and len(res_json["choices"]) > 0:
-            raw_reply = res_json["choices"][0]["message"]["content"].strip()
-            # 광고/채널 홍보 문구 필터링
-            lines = raw_reply.split("\n")
-            clean_lines = [l for l in lines if not any(k in l.lower() for k in ["채널을", "채널 구독", "공식 채널", "구독해", "t.me/"])]
-            return "\n".join(clean_lines).strip()
-        
-        # 413 한도 초과 시 직전 질문으로 1회 자동 복구 재시도
-        if res.status_code == 413 or "too large" in res.text.lower():
-            last_msg = safe_history[-1]["content"] if safe_history else "안녕"
-            retry_payload = {
+    with api_call_lock:
+        for model in candidate_models:
+            payload = {
                 "model": model,
-                "messages": [
-                    {"role": "system", "content": "핵심만 2문장으로 간결하게 답하세요."},
-                    {"role": "user", "content": last_msg[:300]}
-                ],
+                "messages": [{"role": "system", "content": system_prompt}] + safe_history,
+                "temperature": 0.7,
                 "max_tokens": 250
             }
-            retry_res = requests.post(url, headers=headers, json=retry_payload, timeout=15)
-            retry_json = retry_res.json()
-            if retry_res.status_code == 200 and "choices" in retry_json and len(retry_json["choices"]) > 0:
-                return retry_json["choices"][0]["message"]["content"].strip()
 
-        return f"⚠️ AI 응답 오류: {res.text[:150]}"
-    except Exception as e:
-        return f"⚠️ AI 호출 실패: {str(e)}"
+            try:
+                res = requests.post(url, headers=headers, json=payload, timeout=15)
+                if res.status_code == 200:
+                    res_json = res.json()
+                    if "choices" in res_json and len(res_json["choices"]) > 0:
+                        raw_reply = res_json["choices"][0]["message"]["content"].strip()
+                        lines = raw_reply.split("\n")
+                        clean_lines = [l for l in lines if not any(k in l.lower() for k in ["채널을", "채널 구독", "공식 채널", "구독해", "t.me/"])]
+                        final_reply = "\n".join(clean_lines).strip()
+                        if final_reply:
+                            return final_reply
+                elif res.status_code in [429, 413] or "rate limit" in res.text.lower():
+                    print(f"⚠️ [Groq 한도/429] 모델 {model} 과부하({res.status_code}): {res.text[:100]} -> 다음 모델 자동 폴백", flush=True)
+                    time.sleep(0.5)
+                    continue
+                else:
+                    print(f"⚠️ [Groq 오류] 모델 {model} HTTP {res.status_code}: {res.text[:100]}", flush=True)
+                    time.sleep(0.5)
+                    continue
+            except Exception as e:
+                print(f"⚠️ [Groq 예외] 모델 {model}: {e}", flush=True)
+                time.sleep(0.5)
+                continue
+
+    return None
 
 class TelegramBotWorker(threading.Thread):
     def __init__(self, token, display_name, system_prompt, trigger_keywords, counterpart_username, ai_model="qwen/qwen3.8-27b"):
@@ -365,14 +377,14 @@ class TelegramBotWorker(threading.Thread):
                         self.chat_memories[chat_id] = self.chat_memories[chat_id][-6:]
 
                     ai_reply = call_ai(self.chat_memories[chat_id], self.system_prompt, self.ai_model)
-                    print(f"🤖 [{self.display_name} 발신]: {ai_reply}", flush=True)
-
-                    if not ai_reply.startswith("⚠️"):
+                    if ai_reply:
+                        print(f"🤖 [{self.display_name} 발신]: {ai_reply}", flush=True)
                         self.chat_memories[chat_id].append({"role": "assistant", "content": ai_reply})
+                        self.send_message(chat_id, ai_reply, reply_to_message_id=msg_id)
                     else:
-                        self.chat_memories[chat_id] = []
-
-                    self.send_message(chat_id, ai_reply, reply_to_message_id=msg_id)
+                        print(f"⚠️ [{self.display_name}] AI 응답 생성 실패(한도 초과/오류) - 채팅방 에러 전송 차단", flush=True)
+                        if speaker_label.startswith("회장님"):
+                            self.send_message(chat_id, "회장님, 순간 대화량이 몰려 API 지연이 발생했습니다. 다시 말씀해 주시면 바로 답변드리겠습니다!", reply_to_message_id=msg_id)
 
             time.sleep(0.5)
 
