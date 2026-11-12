@@ -233,7 +233,7 @@ def clean_reply_text(raw_reply):
             final_reply = final_reply[:last_punc+1].strip()
     return final_reply
 
-def call_gemini(chat_history, system_prompt, preferred_model="gemini-2.0-flash"):
+def call_gemini(chat_history, system_prompt, preferred_model="gemini-3.5-flash"):
     if not GEMINI_API_KEY:
         return None
 
@@ -260,7 +260,9 @@ def call_gemini(chat_history, system_prompt, preferred_model="gemini-2.0-flash")
     if not gemini_contents:
         gemini_contents.append({"role": "user", "parts": [{"text": "안녕하세요"}]})
 
-    candidate_models = [preferred_model, "gemini-1.5-flash", "gemini-2.0-flash-exp"] if preferred_model != "gemini-1.5-flash" else ["gemini-1.5-flash"]
+    candidate_models = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.8-flash"]
+    if preferred_model and preferred_model not in candidate_models:
+        candidate_models.insert(0, preferred_model)
 
     with api_call_lock:
         for model in candidate_models:
@@ -753,7 +755,7 @@ def main():
             trigger_keywords=["피키", "피키야", "아내피클", "아내 피클", "연두피클", "연두 피클"],
             counterpart_username="my_usstock_bot",
             ai_engine="gemini",
-            ai_model="gemini-2.0-flash"
+            ai_model="gemini-3.5-flash"
         )
         worker_wife.start()
 
