@@ -8,16 +8,18 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 DEOKYEONG_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 WIFE_BOT_TOKEN = os.environ.get("WIFE_BOT_TOKEN", "")
 
-AI_PROVIDER = os.environ.get("AI_PROVIDER", "groq")
-AI_API_KEY = os.environ.get("AI_API_KEY", "")
-# AI 모델 목록 (1순위 Llama 3.3 70B 플래그십, 2순위 GPT-OSS 120B, 3순위 Qwen 27B, 4순위 GPT-OSS 20B 자동 폴백)
+# 다중 AI 공급자 API 키
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+GROQ_API_KEY = os.environ.get("AI_API_KEY", "")
+
+# Groq 백업 모델 목록 (1순위 Llama 3.3 70B 플래그십, 2순위 GPT-OSS 120B, 3순위 Qwen 27B, 4순위 GPT-OSS 20B 자동 폴백)
 AI_MODELS = [
     "llama-3.3-70b-versatile",
     "openai/gpt-oss-120b",
     "qwen/qwen3.8-27b",
     "openai/gpt-oss-20b"
 ]
-AI_MODEL = os.environ.get("AI_MODEL", "llama-3.3-70b-versatile")
 
 # API 동시 호출 충돌 방지 락
 api_call_lock = threading.Lock()
@@ -217,20 +219,134 @@ def get_crypto_context(text):
         print(f"시세 조회 예외: {e}", flush=True)
     return ""
 
-def call_ai(chat_history, system_prompt, preferred_model=None):
-    if not AI_API_KEY:
+def clean_reply_text(raw_reply):
+    import re
+    raw_reply = re.sub(r'\[([^\]]+)\]\(https?://[^\)]+\)', r'\1', raw_reply)
+    raw_reply = re.sub(r'https?://\S+', '', raw_reply)
+    lines = raw_reply.split("\n")
+    clean_lines = [l for l in lines if not any(k in l.lower() for k in ["채널을", "채널 구독", "공식 채널", "구독해", "t.me/"])]
+    final_reply = "\n".join(clean_lines).strip()
+    if final_reply and not final_reply.endswith(('.', '!', '?', '~', '요', '다', '죠', '까', '음', '임', '됨', '함', '"', "'")):
+        last_punc = max(final_reply.rfind('.'), final_reply.rfind('!'), final_reply.rfind('?'))
+        if last_punc > 30:
+            final_reply = final_reply[:last_punc+1].strip()
+    return final_reply
+
+def call_openai(chat_history, system_prompt, preferred_model="gpt-4o"):
+    if not OPENAI_API_KEY:
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+        "User-Agent": "telegram-pickle-bot/1.0"
+    }
+    url = "https://api.openai.com/v1/chat/completions"
+
+    safe_history = []
+    for m in chat_history[-16:]:
+        safe_history.append({"role": m["role"], "content": m["content"][:1000]})
+
+    candidate_models = [preferred_model, "gpt-4o-mini"] if preferred_model != "gpt-4o-mini" else ["gpt-4o-mini"]
+
+    with api_call_lock:
+        for model in candidate_models:
+            payload = {
+                "model": model,
+                "messages": [{"role": "system", "content": system_prompt}] + safe_history,
+                "temperature": 0.7,
+                "max_tokens": 650
+            }
+            try:
+                res = requests.post(url, headers=headers, json=payload, timeout=20)
+                if res.status_code == 200:
+                    res_json = res.json()
+                    if "choices" in res_json and len(res_json["choices"]) > 0:
+                        raw_reply = res_json["choices"][0]["message"]["content"].strip()
+                        final = clean_reply_text(raw_reply)
+                        if final:
+                            print(f"🤖 [OpenAI {model} 응답 성공]", flush=True)
+                            return final
+                else:
+                    print(f"⚠️ [OpenAI 오류] 모델 {model} HTTP {res.status_code}: {res.text[:100]}", flush=True)
+                    time.sleep(0.5)
+            except Exception as e:
+                print(f"⚠️ [OpenAI 예외] 모델 {model}: {e}", flush=True)
+                time.sleep(0.5)
+    return None
+
+def call_claude(chat_history, system_prompt, preferred_model="claude-3-5-sonnet-20241022"):
+    if not ANTHROPIC_API_KEY:
+        return None
+
+    headers = {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+        "User-Agent": "telegram-pickle-bot/1.0"
+    }
+    url = "https://api.anthropic.com/v1/messages"
+
+    anthropic_msgs = []
+    for m in chat_history[-16:]:
+        role = "assistant" if m["role"] == "assistant" else "user"
+        content = m["content"][:1000]
+        if not anthropic_msgs:
+            if role == "assistant":
+                continue
+            anthropic_msgs.append({"role": "user", "content": content})
+        else:
+            if anthropic_msgs[-1]["role"] == role:
+                anthropic_msgs[-1]["content"] += "\n" + content
+            else:
+                anthropic_msgs.append({"role": role, "content": content})
+
+    if not anthropic_msgs:
+        anthropic_msgs.append({"role": "user", "content": "안녕하세요"})
+
+    candidate_models = [preferred_model, "claude-3-5-haiku-20241022"] if preferred_model != "claude-3-5-haiku-20241022" else ["claude-3-5-haiku-20241022"]
+
+    with api_call_lock:
+        for model in candidate_models:
+            payload = {
+                "model": model,
+                "system": system_prompt,
+                "messages": anthropic_msgs,
+                "temperature": 0.7,
+                "max_tokens": 650
+            }
+            try:
+                res = requests.post(url, headers=headers, json=payload, timeout=20)
+                if res.status_code == 200:
+                    res_json = res.json()
+                    content_blocks = res_json.get("content", [])
+                    text_parts = [b.get("text", "") for b in content_blocks if b.get("type") == "text"]
+                    raw_reply = "\n".join(text_parts).strip()
+                    final = clean_reply_text(raw_reply)
+                    if final:
+                        print(f"🤖 [Claude {model} 응답 성공]", flush=True)
+                        return final
+                else:
+                    print(f"⚠️ [Claude 오류] 모델 {model} HTTP {res.status_code}: {res.text[:100]}", flush=True)
+                    time.sleep(0.5)
+            except Exception as e:
+                print(f"⚠️ [Claude 예외] 모델 {model}: {e}", flush=True)
+                time.sleep(0.5)
+    return None
+
+def call_groq(chat_history, system_prompt, preferred_model=None):
+    if not GROQ_API_KEY:
         print("⚠️ 클라우드 환경변수(AI_API_KEY) 누락", flush=True)
         return None
 
     headers = {
-        "Authorization": f"Bearer {AI_API_KEY}",
+        "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json",
         "User-Agent": "telegram-pickle-bot/1.0"
     }
 
     url = "https://api.groq.com/openai/v1/chat/completions"
 
-    # 맥락 보존: 최근 16개 메시지 (단톡방 공지 및 대화 흐름 완벽 파악), 턴당 500자
     safe_history = []
     for m in chat_history[-16:]:
         safe_history.append({"role": m["role"], "content": m["content"][:500]})
@@ -257,20 +373,10 @@ def call_ai(chat_history, system_prompt, preferred_model=None):
                     res_json = res.json()
                     if "choices" in res_json and len(res_json["choices"]) > 0:
                         raw_reply = res_json["choices"][0]["message"]["content"].strip()
-                        # 가짜 링크 및 임의 URL 원천 차단 (마크다운 링크 text만 보존, URL 및 웹주소 완전 삭제)
-                        import re
-                        raw_reply = re.sub(r'\[([^\]]+)\]\(https?://[^\)]+\)', r'\1', raw_reply)
-                        raw_reply = re.sub(r'https?://\S+', '', raw_reply)
-                        lines = raw_reply.split("\n")
-                        clean_lines = [l for l in lines if not any(k in l.lower() for k in ["채널을", "채널 구독", "공식 채널", "구독해", "t.me/"])]
-                        final_reply = "\n".join(clean_lines).strip()
-                        # 문장 미완성 잘림 방지 (마침표 없이 중간에 끊겼을 경우 마지막 완결된 문장까지만 정돈)
-                        if final_reply and not final_reply.endswith(('.', '!', '?', '~', '요', '다', '죠', '까', '음', '임', '됨', '함', '"', "'")):
-                            last_punc = max(final_reply.rfind('.'), final_reply.rfind('!'), final_reply.rfind('?'))
-                            if last_punc > 30:
-                                final_reply = final_reply[:last_punc+1].strip()
-                        if final_reply:
-                            return final_reply
+                        final = clean_reply_text(raw_reply)
+                        if final:
+                            print(f"🤖 [Groq {model} 백업 응답 성공]", flush=True)
+                            return final
                 elif res.status_code in [429, 413] or "rate limit" in res.text.lower():
                     print(f"⚠️ [Groq 한도/429] 모델 {model} 과부하({res.status_code}): {res.text[:100]} -> 다음 모델 자동 폴백", flush=True)
                     time.sleep(0.5)
@@ -287,13 +393,14 @@ def call_ai(chat_history, system_prompt, preferred_model=None):
     return None
 
 class TelegramBotWorker(threading.Thread):
-    def __init__(self, token, display_name, system_prompt, trigger_keywords, counterpart_username, ai_model="qwen/qwen3.8-27b"):
+    def __init__(self, token, display_name, system_prompt, trigger_keywords, counterpart_username, ai_engine="groq", ai_model="llama-3.3-70b-versatile"):
         super().__init__(daemon=True)
         self.token = token
         self.display_name = display_name
         self.system_prompt = system_prompt
         self.trigger_keywords = trigger_keywords
         self.counterpart_username = counterpart_username.lower()
+        self.ai_engine = ai_engine
         self.ai_model = ai_model
         self.base_url = f"https://api.telegram.org/bot{self.token}"
         self.bot_username = ""
@@ -513,7 +620,18 @@ class TelegramBotWorker(threading.Thread):
                     if history_snapshot and history_snapshot[-1]["role"] == "user":
                         history_snapshot[-1] = {"role": "user", "content": augmented_content}
 
-                    ai_reply = call_ai(history_snapshot, self.system_prompt, self.ai_model)
+                    ai_reply = None
+                    if self.ai_engine == "openai" and OPENAI_API_KEY:
+                        ai_reply = call_openai(history_snapshot, self.system_prompt, self.ai_model or "gpt-4o")
+                    elif self.ai_engine == "anthropic" and ANTHROPIC_API_KEY:
+                        ai_reply = call_claude(history_snapshot, self.system_prompt, self.ai_model or "claude-3-5-sonnet-20241022")
+
+                    if not ai_reply:
+                        if self.ai_engine == "openai" and not OPENAI_API_KEY:
+                            print(f"ℹ️ [{self.display_name}] OPENAI_API_KEY 미설정 -> Groq 백업 가동", flush=True)
+                        elif self.ai_engine == "anthropic" and not ANTHROPIC_API_KEY:
+                            print(f"ℹ️ [{self.display_name}] ANTHROPIC_API_KEY 미설정 -> Groq 백업 가동", flush=True)
+                        ai_reply = call_groq(history_snapshot, self.system_prompt, "llama-3.3-70b-versatile")
                     if ai_reply:
                         stripped_reply = ai_reply.strip().rstrip(".!?~ ")
                         if stripped_reply in ["제 담당이 아닙니다", "확인 불가", "제 담당이 아니에요", "제 소관이 아닙니다", "담당이 아닙니다"]:
@@ -547,25 +665,27 @@ def main():
     # 3. 1분 무료 채널 감시 데몬 가동 (0토큰 Diff 필터링)
     threading.Thread(target=zero_token_channel_monitor, daemon=True).start()
 
-    # 4. 덕영님 피클 봇 워커 시작 (Llama 3.3 70B & GPT-OSS 120B 다중 두뇌)
+    # 4. 덕영님 피클 봇 워커 시작 (OpenAI GPT-4o 플래그십 엔진)
     worker_deokyeong = TelegramBotWorker(
         token=DEOKYEONG_BOT_TOKEN,
         display_name="덕영 피클",
         system_prompt=DEOKYEONG_SYSTEM_PROMPT,
         trigger_keywords=["피클", "피클아", "덕영피클", "남편피클"],
         counterpart_username="pickle_trade_bot",
-        ai_model="llama-3.3-70b-versatile"
+        ai_engine="openai",
+        ai_model="gpt-4o"
     )
     worker_deokyeong.start()
 
-    # 4. 아내분 피클 봇 워커 시작 (덕영 피클과 동일한 Llama 3.3 70B 고지능 두뇌)
+    # 5. 아내분 피클 봇 워커 시작 (Anthropic Claude 3.5 Sonnet 최강 논리 엔진)
     worker_wife = TelegramBotWorker(
         token=WIFE_BOT_TOKEN,
         display_name="아내 피클",
         system_prompt=WIFE_SYSTEM_PROMPT,
         trigger_keywords=["피키", "피키야", "아내피클", "아내 피클", "연두피클", "연두 피클"],
         counterpart_username="my_usstock_bot",
-        ai_model="llama-3.3-70b-versatile"
+        ai_engine="anthropic",
+        ai_model="claude-3-5-sonnet-20241022"
     )
     worker_wife.start()
 
