@@ -9,6 +9,7 @@ DEOKYEONG_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 WIFE_BOT_TOKEN = os.environ.get("WIFE_BOT_TOKEN", "")
 
 # 다중 AI 공급자 API 키
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GROQ_API_KEY = os.environ.get("AI_API_KEY", "")
@@ -231,6 +232,67 @@ def clean_reply_text(raw_reply):
         if last_punc > 30:
             final_reply = final_reply[:last_punc+1].strip()
     return final_reply
+
+def call_gemini(chat_history, system_prompt, preferred_model="gemini-2.0-flash"):
+    if not GEMINI_API_KEY:
+        return None
+
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY,
+        "User-Agent": "telegram-pickle-bot/1.0"
+    }
+
+    gemini_contents = []
+    for m in chat_history[-16:]:
+        role = "model" if m["role"] == "assistant" else "user"
+        content = m["content"][:1000]
+        if not gemini_contents:
+            if role == "model":
+                continue
+            gemini_contents.append({"role": "user", "parts": [{"text": content}]})
+        else:
+            if gemini_contents[-1]["role"] == role:
+                gemini_contents[-1]["parts"][0]["text"] += "\n" + content
+            else:
+                gemini_contents.append({"role": role, "parts": [{"text": content}]})
+
+    if not gemini_contents:
+        gemini_contents.append({"role": "user", "parts": [{"text": "안녕하세요"}]})
+
+    candidate_models = [preferred_model, "gemini-1.5-flash", "gemini-2.0-flash-exp"] if preferred_model != "gemini-1.5-flash" else ["gemini-1.5-flash"]
+
+    with api_call_lock:
+        for model in candidate_models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            payload = {
+                "system_instruction": {
+                    "parts": [{"text": system_prompt}]
+                },
+                "contents": gemini_contents,
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "maxOutputTokens": 650
+                }
+            }
+            try:
+                res = requests.post(url, headers=headers, json=payload, timeout=20)
+                if res.status_code == 200:
+                    res_json = res.json()
+                    candidates = res_json.get("candidates", [])
+                    if candidates and "content" in candidates[0] and "parts" in candidates[0]["content"]:
+                        raw_reply = candidates[0]["content"]["parts"][0].get("text", "").strip()
+                        final = clean_reply_text(raw_reply)
+                        if final:
+                            print(f"🤖 [Gemini {model} 응답 성공]", flush=True)
+                            return final
+                else:
+                    print(f"⚠️ [Gemini 오류] 모델 {model} HTTP {res.status_code}: {res.text[:120]}", flush=True)
+                    time.sleep(0.5)
+            except Exception as e:
+                print(f"⚠️ [Gemini 예외] 모델 {model}: {e}", flush=True)
+                time.sleep(0.5)
+    return None
 
 def call_openai(chat_history, system_prompt, preferred_model="gpt-4o"):
     if not OPENAI_API_KEY:
@@ -621,13 +683,17 @@ class TelegramBotWorker(threading.Thread):
                         history_snapshot[-1] = {"role": "user", "content": augmented_content}
 
                     ai_reply = None
-                    if self.ai_engine == "openai" and OPENAI_API_KEY:
+                    if self.ai_engine == "gemini" and GEMINI_API_KEY:
+                        ai_reply = call_gemini(history_snapshot, self.system_prompt, self.ai_model or "gemini-2.0-flash")
+                    elif self.ai_engine == "openai" and OPENAI_API_KEY:
                         ai_reply = call_openai(history_snapshot, self.system_prompt, self.ai_model or "gpt-4o")
                     elif self.ai_engine == "anthropic" and ANTHROPIC_API_KEY:
                         ai_reply = call_claude(history_snapshot, self.system_prompt, self.ai_model or "claude-3-5-sonnet-20241022")
 
                     if not ai_reply:
-                        if self.ai_engine == "openai" and not OPENAI_API_KEY:
+                        if self.ai_engine == "gemini" and not GEMINI_API_KEY:
+                            print(f"ℹ️ [{self.display_name}] GEMINI_API_KEY 미설정 -> Groq 백업 가동", flush=True)
+                        elif self.ai_engine == "openai" and not OPENAI_API_KEY:
                             print(f"ℹ️ [{self.display_name}] OPENAI_API_KEY 미설정 -> Groq 백업 가동", flush=True)
                         elif self.ai_engine == "anthropic" and not ANTHROPIC_API_KEY:
                             print(f"ℹ️ [{self.display_name}] ANTHROPIC_API_KEY 미설정 -> Groq 백업 가동", flush=True)
@@ -665,29 +731,31 @@ def main():
     # 3. 1분 무료 채널 감시 데몬 가동 (0토큰 Diff 필터링)
     threading.Thread(target=zero_token_channel_monitor, daemon=True).start()
 
-    # 4. 덕영님 피클 봇 워커 시작 (OpenAI GPT-4o 플래그십 엔진)
-    worker_deokyeong = TelegramBotWorker(
-        token=DEOKYEONG_BOT_TOKEN,
-        display_name="덕영 피클",
-        system_prompt=DEOKYEONG_SYSTEM_PROMPT,
-        trigger_keywords=["피클", "피클아", "덕영피클", "남편피클"],
-        counterpart_username="pickle_trade_bot",
-        ai_engine="openai",
-        ai_model="gpt-4o"
-    )
-    worker_deokyeong.start()
+    # 4. 덕영님 피클 봇 워커 시작 (토큰 있을 때만 가동)
+    if DEOKYEONG_BOT_TOKEN:
+        worker_deokyeong = TelegramBotWorker(
+            token=DEOKYEONG_BOT_TOKEN,
+            display_name="덕영 피클",
+            system_prompt=DEOKYEONG_SYSTEM_PROMPT,
+            trigger_keywords=["피클", "피클아", "덕영피클", "남편피클"],
+            counterpart_username="pickle_trade_bot",
+            ai_engine="openai",
+            ai_model="gpt-4o"
+        )
+        worker_deokyeong.start()
 
-    # 5. 아내분 피클 봇 워커 시작 (Anthropic Claude 3.5 Sonnet 최강 논리 엔진)
-    worker_wife = TelegramBotWorker(
-        token=WIFE_BOT_TOKEN,
-        display_name="아내 피클",
-        system_prompt=WIFE_SYSTEM_PROMPT,
-        trigger_keywords=["피키", "피키야", "아내피클", "아내 피클", "연두피클", "연두 피클"],
-        counterpart_username="my_usstock_bot",
-        ai_engine="anthropic",
-        ai_model="claude-3-5-sonnet-20241022"
-    )
-    worker_wife.start()
+    # 5. 아내분 피클 봇 워커 시작 (피키 - Google Gemini 2.0 Flash 무료 엔진)
+    if WIFE_BOT_TOKEN:
+        worker_wife = TelegramBotWorker(
+            token=WIFE_BOT_TOKEN,
+            display_name="아내 피클",
+            system_prompt=WIFE_SYSTEM_PROMPT,
+            trigger_keywords=["피키", "피키야", "아내피클", "아내 피클", "연두피클", "연두 피클"],
+            counterpart_username="my_usstock_bot",
+            ai_engine="gemini",
+            ai_model="gemini-2.0-flash"
+        )
+        worker_wife.start()
 
     # 메인 스레드 유지
     while True:
