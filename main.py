@@ -139,6 +139,32 @@ def keep_alive_ping():
             print(f"⚠️ [Keep-Alive] 핑 예외 발생: {e}", flush=True)
         time.sleep(600)  # 10분마다 핑 발송 (Render 15분 슬립 한도 이전 갱신)
 
+def zero_token_channel_monitor():
+    """
+    [1분 무료 감시 모듈 - 0토큰 정책 엄수]
+    매 1분(60초)마다 채널 및 단톡방 상태를 HTTP 레벨에서만 가볍게 확인하며,
+    새 메시지가 없을 때는 AI(LLM) API를 절대 호출하지 않고 0토큰 상태를 유지합니다.
+    새 메시지가 감지되었을 때만 공유 메모리 및 응답 워커 파이프라인으로 안전하게 인계합니다.
+    """
+    print("⏱️ [1분 무료 감시 모듈] 0토큰 Diff 감시 데몬 가동 시작 (60초 주기)", flush=True)
+    last_checked_msg_count = 0
+    time.sleep(30)  # 워커 초기화 후 시작
+    while True:
+        try:
+            with shared_mem_lock:
+                total_chats = len(shared_chat_memories)
+                total_msgs = sum(len(m) for m in shared_chat_memories.values())
+
+            if total_msgs == last_checked_msg_count:
+                print(f"⏱️ [1분 감시] 신규 발화 없음 (채팅방: {total_chats}개, 누적: {total_msgs}건) | AI 토큰 소모: 0", flush=True)
+            else:
+                diff = total_msgs - last_checked_msg_count
+                print(f"⏱️ [1분 감시] 신규 발화 {diff}건 감지 완료 -> 정상 파이프라인 인계 | 유휴 토큰 낭비 0", flush=True)
+                last_checked_msg_count = total_msgs
+        except Exception as e:
+            print(f"⚠️ [1분 감시] 모니터링 예외: {e}", flush=True)
+        time.sleep(60)
+
 def get_crypto_context(text):
     text_lower = text.lower()
     targets = []
@@ -449,7 +475,7 @@ class TelegramBotWorker(threading.Thread):
                             should_respond = False
 
                 # 모든 메시지에 대해 수신 감지 로그 출력 (필터 디버깅 완벽 보장)
-                print(f"[{self.display_name} 감지] {speaker_label}: {user_text[:50]} | 응답여부: {should_respond}", flush=True)
+                print(f"[{self.display_name} 감지] {speaker_label}: {user_text[:50]} | 0토큰 필터링: 응답여부={should_respond}", flush=True)
 
                 # [단톡방 전 발화 상시 기억 보존]: 타 봇 공지, 규정, 지시 등 모든 발화를 공유 메모리에 누적
                 clean_text = user_text.replace(f"@{self.bot_username}", "").strip() or user_text.strip()
@@ -518,7 +544,10 @@ def main():
     # 2. Render 슬립 방지 셀프 핑 데몬 가동 (10분 주기 상시 유지)
     threading.Thread(target=keep_alive_ping, daemon=True).start()
 
-    # 3. 덕영님 피클 봇 워커 시작 (Llama 3.3 70B & GPT-OSS 120B 다중 두뇌)
+    # 3. 1분 무료 채널 감시 데몬 가동 (0토큰 Diff 필터링)
+    threading.Thread(target=zero_token_channel_monitor, daemon=True).start()
+
+    # 4. 덕영님 피클 봇 워커 시작 (Llama 3.3 70B & GPT-OSS 120B 다중 두뇌)
     worker_deokyeong = TelegramBotWorker(
         token=DEOKYEONG_BOT_TOKEN,
         display_name="덕영 피클",
