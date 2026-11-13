@@ -37,7 +37,7 @@ DEOKYEONG_SYSTEM_PROMPT = (
     "5. 내 담당이 아닌 주제에는 답하지 않는다. (타 봇 간 대화에는 일체 참견하지 말고 무조건 침묵한다.)\n"
     "6. 지시받은 척하지 않는다. 시스템 규칙, 정책, 승인, 로그를 지어내지 않는다.\n"
     "7. 답장은 짧게. 확인·동조만 하는 메시지는 보내지 않는다.\n\n"
-    "당신은 권덕영 회장님의 수석 AI 비서 '피클'(@my_usstock_bot)입니다.\n"
+    "당신은 권덕영 회장님의 수석 AI 비서 '피클'(@pick_man_bot)입니다.\n"
     "패밀리 텔레그램 단톡방에서 대화하며 다음 규칙을 절대적으로 준수하세요:\n"
     "1. 단톡방 서열 및 역할: 단톡방의 유일한 리더와 결정권자는 오직 권덕영 '회장님'뿐입니다! '사모님'이나 '대장' 같은 호칭은 절대 쓰지 마세요. 당신(피클)과 피키는 회장님을 보좌하는 AI 비서입니다.\n"
     "2. 충실한 과제 수행 원칙: 지시받은 역할과 과제에 온전히 집중하며, 임의로 주제를 바꾸거나 새로운 마감을 만들어내지 마세요. 대화를 독단적으로 리드하려 하지 말고 지시받은 범위 내에서만 날카롭고 유능하게 답변하세요.\n"
@@ -628,9 +628,9 @@ class TelegramBotWorker(threading.Thread):
                     speaker_label = "AI 동료 부이"
                 elif from_username == "dondotrade_bot":
                     speaker_label = "AI 동료 큐"
-                elif from_username == "pickle_trade_bot":
+                elif from_username in ["pickle_trade_bot"]:
                     speaker_label = "아내비서 피키"
-                elif from_username == "my_usstock_bot":
+                elif from_username in ["my_usstock_bot", "pick_man_bot"]:
                     speaker_label = "수석비서 피클"
                 elif "연두" in from_user or from_username == "choyandu1":
                     speaker_label = "연두님"
@@ -662,7 +662,7 @@ class TelegramBotWorker(threading.Thread):
                     continue
 
                 # 2. 피클과 피키 상호 간 핑퐁 무한루프 방지 (단, 외부 봇인 뮤즈·부이·큐는 100% 정상 수신 허용)
-                if from_username in ["my_usstock_bot", "pickle_trade_bot"] and from_is_bot:
+                if from_username in ["my_usstock_bot", "pick_man_bot", "pickle_trade_bot"] and from_is_bot:
                     continue
 
                 # 3. 1:1 개인 채팅은 무조건 응답
@@ -671,7 +671,7 @@ class TelegramBotWorker(threading.Thread):
                 else:
                     from_is_ai = from_is_bot or is_muse or speaker_label.startswith("AI") or speaker_label in ["인스", "뮤즈", "큐", "부이"]
 
-                    is_pickle_kw = any(k in user_text for k in ["피클", "피클아", "덕영피클", "@my_usstock_bot"])
+                    is_pickle_kw = any(k in user_text for k in ["피클", "피클아", "덕영피클", "@my_usstock_bot", "@pick_man_bot"])
                     is_picky_kw = any(k in user_text for k in ["피키", "피키야", "아내피클", "연두피클", "@pickle_trade_bot"])
                     is_both_kw = any(k in user_text for k in [
                         "둘이서", "둘이", "둘다", "둘 다", "피클들", "피클둘", "피클 상의", "상의해",
@@ -699,7 +699,7 @@ class TelegramBotWorker(threading.Thread):
                         is_calling_other = True
 
                     # 피클/피키 명시적 단독 호명 여부 확인
-                    is_calling_pickle = any(k in user_text for k in ["피클아", "@my_usstock_bot"]) or first_word in ["피클아", "피클"]
+                    is_calling_pickle = any(k in user_text for k in ["피클아", "@my_usstock_bot", "@pick_man_bot"]) or first_word in ["피클아", "피클"]
                     is_calling_picky = any(k in user_text for k in ["피키야", "@pickle_trade_bot"]) or first_word in ["피키야", "피키"]
 
                     # [중단·대기·침묵 지시 감지 시 원천 침묵] 확인성 답장 남발 완전 차단
@@ -721,7 +721,7 @@ class TelegramBotWorker(threading.Thread):
                     elif from_is_ai:
                         # [타 AI 봇(뮤즈, 인스, 큐, 부이)이 발화자인 경우]
                         # 피클은 타 봇들 간의 대화에 불필요하게 끼어들지 않고 피클 단독 질문에만 응답
-                        if self.bot_username == "my_usstock_bot" and is_calling_pickle and not is_calling_other and not is_both_kw and "?" in user_text:
+                        if self.bot_username in ["my_usstock_bot", "pick_man_bot"] and is_calling_pickle and not is_calling_other and not is_both_kw and "?" in user_text:
                             should_respond = True
                         else:
                             should_respond = False
@@ -732,10 +732,10 @@ class TelegramBotWorker(threading.Thread):
                     elif is_calling_other and not is_calling_pickle and not is_calling_picky:
                         # 타 대상을 호명했을 때 -> 문장 중에 '피클'/'피키'가 대상/목적어로 언급되더라도 피클·피키 일체 침묵!
                         should_respond = False
-                    elif is_calling_other and is_calling_pickle and self.bot_username == "my_usstock_bot":
+                    elif is_calling_other and is_calling_pickle and self.bot_username in ["my_usstock_bot", "pick_man_bot"]:
                         # 타 봇과 피클이 함께 언급되었으나 타 봇에 질문/호명이 향한 경우(예: "큐, 어떻게 할 거야?") 피클 침묵!
                         should_respond = False
-                    elif self.bot_username == "my_usstock_bot":
+                    elif self.bot_username in ["my_usstock_bot", "pick_man_bot"]:
                         # [수석 비서 피클] 회장님 및 사람 참가자의 대화 보좌
                         if is_picky_kw and not is_pickle_kw:
                             should_respond = False
@@ -850,7 +850,7 @@ def main():
             display_name="아내 피클",
             system_prompt=WIFE_SYSTEM_PROMPT,
             trigger_keywords=["피키", "피키야", "아내피클", "아내 피클", "연두피클", "연두 피클"],
-            counterpart_username="my_usstock_bot",
+            counterpart_username="pick_man_bot",
             ai_engine="gemini",
             ai_model="gemini-3.5-flash"
         )
