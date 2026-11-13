@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import requests
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -7,6 +8,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 # 텔레그램 봇 토큰들 (환경변수에서만 로드, 하드코딩 절대 금지)
 DEOKYEONG_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 WIFE_BOT_TOKEN = os.environ.get("WIFE_BOT_TOKEN", "")
+SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
 
 # 다중 AI 공급자 API 키
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
@@ -90,17 +92,112 @@ lock = threading.Lock()
 shared_chat_memories = {}
 shared_mem_lock = threading.Lock()
 
+# [슬랙 브릿지 연동 - 텔레그램 명령 큐 및 포워더]
+bridge_queue_lock = threading.Lock()
+telegram_bridge_queue = []
+
+def forward_to_slack_and_queue(chat_id, msg_id, sender, text, chat_type="group"):
+    global telegram_bridge_queue, SLACK_WEBHOOK_URL
+    item = {
+        "msg_id": msg_id,
+        "chat_id": chat_id,
+        "sender": sender,
+        "text": text,
+        "ts": time.time(),
+        "chat_type": chat_type
+    }
+    with bridge_queue_lock:
+        telegram_bridge_queue.append(item)
+        if len(telegram_bridge_queue) > 50:
+            telegram_bridge_queue = telegram_bridge_queue[-50:]
+    print(f"🌉 [브릿지 큐 적재]: {sender} -> {text[:50]}", flush=True)
+
+    if SLACK_WEBHOOK_URL:
+        try:
+            payload = {
+                "text": f"📨 *[텔레그램 명령 인입]* `{sender}` ({chat_type}):\n>{text}\n_(chat_id: `{chat_id}`, msg_id: `{msg_id}`)_"
+            }
+            res = requests.post(SLACK_WEBHOOK_URL, json=payload, timeout=5)
+            if res.status_code == 200:
+                print(f"✅ [슬랙 웹훅 전송 성공]: {text[:30]}", flush=True)
+            else:
+                print(f"⚠️ [슬랙 웹훅 전송 실패]: 응답코드 {res.status_code}", flush=True)
+        except Exception as e:
+            print(f"⚠️ [슬랙 웹훅 예외]: {e}", flush=True)
+
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "application/json; charset=utf-8")
-        self.end_headers()
-        self.wfile.write(b'{"status": "ok", "service": "telegram-pickle-bot", "webhook_url": "https://telegram-pickle-bot.onrender.com/webhook"}')
+        if self.path == "/api/bridge/messages":
+            with bridge_queue_lock:
+                data = list(telegram_bridge_queue)
+            self.send_response(200)
+            self.send_header("Content-type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": True, "messages": data}, ensure_ascii=False).encode("utf-8"))
+        else:
+            self.send_response(200)
+            self.send_header("Content-type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b'{"status": "ok", "service": "telegram-pickle-bot", "webhook_url": "https://telegram-pickle-bot.onrender.com/webhook"}')
 
     def do_POST(self):
         content_length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(content_length).decode("utf-8", errors="ignore") if content_length > 0 else ""
-        print(f"📥 [웹훅 POST 수신]: {post_data[:200]}", flush=True)
+        print(f"📥 [웹훅 POST 수신 경로: {self.path}]: {post_data[:200]}", flush=True)
+
+        if self.path == "/api/bridge/reply":
+            try:
+                body = json.loads(post_data) if post_data else {}
+                target_chat_id = body.get("chat_id")
+                reply_text = body.get("text", "")
+                reply_to_msg_id = body.get("reply_to_message_id")
+                bot_to_use = WIFE_BOT_TOKEN or DEOKYEONG_BOT_TOKEN
+                if target_chat_id and reply_text and bot_to_use:
+                    url = f"https://api.telegram.org/bot{bot_to_use}/sendMessage"
+                    p = {"chat_id": target_chat_id, "text": reply_text}
+                    if reply_to_msg_id:
+                        p["reply_to_message_id"] = reply_to_msg_id
+                    requests.post(url, json=p, timeout=5)
+                    print(f"📤 [텔레그램 회신 완료]: {reply_text[:50]}", flush=True)
+                    self.send_response(200)
+                    self.send_header("Content-type", "application/json; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(b'{"ok": true, "message": "Reply sent to telegram"}')
+                    return
+            except Exception as e:
+                print(f"⚠️ [텔레그램 회신 실패]: {e}", flush=True)
+
+        elif self.path == "/api/bridge/ack":
+            try:
+                body = json.loads(post_data) if post_data else {}
+                acked_ids = set(body.get("ids", []))
+                with bridge_queue_lock:
+                    global telegram_bridge_queue
+                    telegram_bridge_queue = [m for m in telegram_bridge_queue if m.get("msg_id") not in acked_ids]
+                self.send_response(200)
+                self.send_header("Content-type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(b'{"ok": true, "message": "Acknowledged"}')
+                return
+            except Exception as e:
+                pass
+
+        elif self.path == "/api/bridge/slack_webhook":
+            try:
+                body = json.loads(post_data) if post_data else {}
+                url = body.get("webhook_url", "").strip()
+                if url:
+                    global SLACK_WEBHOOK_URL
+                    SLACK_WEBHOOK_URL = url
+                    print(f"🔗 [슬랙 웹훅 동적 등록 성공]: {url[:30]}...", flush=True)
+                    self.send_response(200)
+                    self.send_header("Content-type", "application/json; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(b'{"ok": true, "message": "Slack webhook registered"}')
+                    return
+            except Exception as e:
+                pass
+
         self.send_response(200)
         self.send_header("Content-type", "application/json; charset=utf-8")
         self.end_headers()
@@ -511,8 +608,13 @@ class TelegramBotWorker(threading.Thread):
                 if from_username == self.bot_username:
                     continue
 
-                # 봇 명령어(슬래시로 시작)이고 나를 지목한 게 아니면 무시
-                if user_text.startswith("/") and not f"@{self.bot_username}" in user_text.lower():
+                # 봇 명령어(슬래시로 시작)이고 나를 지목한 게 아니면 무시 (단, 피클 브릿지 명령어 /cmd, /pickle, /bridge 는 예외)
+                is_pickle_bridge_cmd = (
+                    user_text.startswith("/cmd") or
+                    user_text.startswith("/pickle") or
+                    user_text.startswith("/bridge")
+                )
+                if user_text.startswith("/") and not f"@{self.bot_username}" in user_text.lower() and not is_pickle_bridge_cmd:
                     continue
 
                 is_muse = (from_username == "muse_control_bot")
@@ -534,6 +636,18 @@ class TelegramBotWorker(threading.Thread):
                     speaker_label = "연두님"
                 else:
                     speaker_label = from_user
+
+                # [슬랙 브릿지 포워딩]
+                # /cmd, /pickle 명령어, 피클/피키 호출, 또는 회장님의 1:1 대화인 경우 슬랙 및 큐로 포워딩
+                is_pickle_kw = any(k in user_text for k in ["피클아", "피클", "피키야", "피키"])
+                if is_pickle_bridge_cmd or (speaker_label.startswith("회장님") and (is_pickle_kw or chat_type == "private")):
+                    forward_to_slack_and_queue(
+                        chat_id=chat_id,
+                        msg_id=msg_id,
+                        sender=speaker_label,
+                        text=user_text,
+                        chat_type=chat_type
+                    )
 
                 is_reply_to_me = False
                 if "reply_to_message" in message:
