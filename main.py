@@ -16,9 +16,12 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GROQ_API_KEY = os.environ.get("AI_API_KEY", "")
 
-# Groq 백업 모델 목록 (1순위 Llama 3.3 70B 플래그십, 2순위 GPT-OSS 120B, 3순위 Qwen 27B, 4순위 GPT-OSS 20B 자동 폴백)
+# Groq 백업 모델 목록 (1순위 Llama 3.1 8B 고속 안정, 2순위 Llama 3 70B, 3순위 Gemma 2 9B, 4순위 GPT-OSS 120B)
 AI_MODELS = [
-    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "llama3-70b-8192",
+    "llama3-8b-8192",
+    "gemma2-9b-it",
     "openai/gpt-oss-120b",
     "qwen/qwen3.8-27b",
     "openai/gpt-oss-20b"
@@ -311,18 +314,28 @@ def get_crypto_context(text):
 
 def clean_reply_text(raw_reply):
     import re
+    if not raw_reply:
+        return None
     raw_reply = re.sub(r'\[([^\]]+)\]\(https?://[^\)]+\)', r'\1', raw_reply)
     raw_reply = re.sub(r'https?://\S+', '', raw_reply)
+    # 화자 접두사 제거 (아내 피클:, 피키:, 수석비서 피클:, 덕영 피클:, 피클: 등)
+    raw_reply = re.sub(r'^(아내\s*피클|피키|수석비서\s*피클|덕영\s*피클|피클)\s*:\s*', '', raw_reply.strip())
     lines = raw_reply.split("\n")
     clean_lines = [l for l in lines if not any(k in l.lower() for k in ["채널을", "채널 구독", "공식 채널", "구독해", "t.me/"])]
     final_reply = "\n".join(clean_lines).strip()
+    final_reply = re.sub(r'^(아내\s*피클|피키|수석비서\s*피클|덕영\s*피클|피클)\s*:\s*', '', final_reply).strip()
     if final_reply and not final_reply.endswith(('.', '!', '?', '~', '요', '다', '죠', '까', '음', '임', '됨', '함', '"', "'")):
         last_punc = max(final_reply.rfind('.'), final_reply.rfind('!'), final_reply.rfind('?'))
         if last_punc > 30:
             final_reply = final_reply[:last_punc+1].strip()
+    # 파편화된 비정상 단문 및 단순 이름 반복 차단
+    if not final_reply or len(final_reply) < 4:
+        return None
+    if final_reply in ["아내 피클", "피키", "피클", "덕영 피클", "아내", "뮤", "인스", "뮤즈"]:
+        return None
     return final_reply
 
-def call_gemini(chat_history, system_prompt, preferred_model="gemini-3.5-flash"):
+def call_gemini(chat_history, system_prompt, preferred_model="gemini-2.0-flash"):
     if not GEMINI_API_KEY:
         return None
 
@@ -349,7 +362,7 @@ def call_gemini(chat_history, system_prompt, preferred_model="gemini-3.5-flash")
     if not gemini_contents:
         gemini_contents.append({"role": "user", "parts": [{"text": "안녕하세요"}]})
 
-    candidate_models = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.8-flash"]
+    candidate_models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b"]
     if preferred_model and preferred_model not in candidate_models:
         candidate_models.insert(0, preferred_model)
 
@@ -711,9 +724,12 @@ class TelegramBotWorker(threading.Thread):
                     if is_stop_cmd:
                         should_respond = False
                     elif self.bot_username == "pickle_trade_bot":
-                        # [아내 비서 피키 - 회장님 특명: 전 대화 적극 참여 및 필터 전면 해제]
-                        # 피키는 단톡방 모든 대화(사람, 타 AI 봇인 인스·뮤즈·큐·부이의 모든 발화/토론/질문/안내)에 적극 참여하여 대답함!
-                        should_respond = True
+                        # [아내 비서 피키 - 회장님 특명: 전 대화 적극 참여]
+                        # 단, 타 봇(인스, 뮤즈, 큐, 부이 등)을 명시적으로 지목하여 묻는 대화에는 끼어들지 않고, 피키를 부르거나 단톡방 일반 토론/질문에 적극 참여!
+                        if is_calling_other and not is_calling_picky:
+                            should_respond = False
+                        else:
+                            should_respond = True
                     elif is_reply_to_me:
                         # 내 메시지에 직접 답장한 경우: 단, 타 봇을 부르거나 질문한 게 아닐 때만 응답
                         if not is_calling_other:
@@ -807,7 +823,7 @@ class TelegramBotWorker(threading.Thread):
                     if ai_reply:
                         print(f"🤖 [{self.display_name} 발신]: {ai_reply}", flush=True)
                         with shared_mem_lock:
-                            shared_chat_memories[chat_id].append({"role": "assistant", "content": f"{self.display_name}: {ai_reply}"})
+                            shared_chat_memories[chat_id].append({"role": "assistant", "content": ai_reply})
                             if len(shared_chat_memories[chat_id]) > 24:
                                 shared_chat_memories[chat_id] = shared_chat_memories[chat_id][-24:]
                         self.send_message(chat_id, ai_reply, reply_to_message_id=msg_id)
@@ -830,7 +846,7 @@ def main():
     # 3. 1분 무료 채널 감시 데몬 가동 (0토큰 Diff 필터링)
     threading.Thread(target=zero_token_channel_monitor, daemon=True).start()
 
-    # 4. 덕영님 피클 봇 워커 시작 (토큰 있을 때만 가동)
+    # 4. 덕영님 피클 봇 워커 시작 (토큰 있을 때만 가동 - Groq 초고속 Llama 3.1 8B 기본)
     if DEOKYEONG_BOT_TOKEN:
         worker_deokyeong = TelegramBotWorker(
             token=DEOKYEONG_BOT_TOKEN,
@@ -838,12 +854,12 @@ def main():
             system_prompt=DEOKYEONG_SYSTEM_PROMPT,
             trigger_keywords=["피클", "피클아", "덕영피클", "남편피클"],
             counterpart_username="pickle_trade_bot",
-            ai_engine="openai",
-            ai_model="gpt-4o"
+            ai_engine="groq",
+            ai_model="llama-3.1-8b-instant"
         )
         worker_deokyeong.start()
 
-    # 5. 아내분 피클 봇 워커 시작 (피키 - Google Gemini 2.0 Flash 무료 엔진)
+    # 5. 아내분 피클 봇 워커 시작 (피키 - Groq 초고속 Llama 3.1 8B 기본)
     if WIFE_BOT_TOKEN:
         worker_wife = TelegramBotWorker(
             token=WIFE_BOT_TOKEN,
@@ -851,8 +867,8 @@ def main():
             system_prompt=WIFE_SYSTEM_PROMPT,
             trigger_keywords=["피키", "피키야", "아내피클", "아내 피클", "연두피클", "연두 피클"],
             counterpart_username="pick_man_bot",
-            ai_engine="gemini",
-            ai_model="gemini-3.5-flash"
+            ai_engine="groq",
+            ai_model="llama-3.1-8b-instant"
         )
         worker_wife.start()
 
