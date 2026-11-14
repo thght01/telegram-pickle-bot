@@ -16,13 +16,12 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GROQ_API_KEY = os.environ.get("AI_API_KEY", "")
 
-# Groq 모델 우선순위 (2026-11-15 정비: 종료된 Llama 3.1 8B·Llama 3 70B·Llama 3 8B·Gemma 2 9B 제거)
-# 1순위 Qwen 27B(실배포 로그 검증), 2순위 GPT-OSS 120B, 3순위 GPT-OSS 20B, 4순위 Llama 3.3 70B(최후 폴백)
+# Groq 모델 우선순위 (2026-11-15 정비: 종료된 Llama 3.1 8B·Llama 3 70B·Llama 3 8B·Gemma 2 9B 제거, Enterprise 전용 Llama 3.3 70B 제외)
+# 1순위 Qwen 27B(실배포 로그 검증), 2순위 GPT-OSS 120B, 3순위 GPT-OSS 20B (전부 Groq현재 제공 모델)
 AI_MODELS = [
     "qwen/qwen3.8-27b",
     "openai/gpt-oss-120b",
-    "openai/gpt-oss-20b",
-    "llama-3.3-70b-versatile"
+    "openai/gpt-oss-20b"
 ]
 
 # API 동시 호출 충돌 방지 락
