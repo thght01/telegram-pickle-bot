@@ -16,15 +16,13 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GROQ_API_KEY = os.environ.get("AI_API_KEY", "")
 
-# Groq 백업 모델 목록 (1순위 Llama 3.1 8B 고속 안정, 2순위 Llama 3 70B, 3순위 Gemma 2 9B, 4순위 GPT-OSS 120B)
+# Groq 모델 우선순위 (2026-11-15 정비: 종료된 Llama 3.1 8B·Llama 3 70B·Llama 3 8B·Gemma 2 9B 제거)
+# 1순위 Qwen 27B(실배포 로그 검증), 2순위 GPT-OSS 120B, 3순위 GPT-OSS 20B, 4순위 Llama 3.3 70B(최후 폴백)
 AI_MODELS = [
-    "llama-3.1-8b-instant",
-    "llama3-70b-8192",
-    "llama3-8b-8192",
-    "gemma2-9b-it",
-    "openai/gpt-oss-120b",
     "qwen/qwen3.8-27b",
-    "openai/gpt-oss-20b"
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "llama-3.3-70b-versatile"
 ]
 
 # API 동시 호출 충돌 방지 락
@@ -560,7 +558,7 @@ def call_groq(chat_history, system_prompt, preferred_model=None):
     return None
 
 class TelegramBotWorker(threading.Thread):
-    def __init__(self, token, display_name, system_prompt, trigger_keywords, counterpart_username, ai_engine="groq", ai_model="llama-3.3-70b-versatile"):
+    def __init__(self, token, display_name, system_prompt, trigger_keywords, counterpart_username, ai_engine="groq", ai_model="qwen/qwen3.8-27b"):
         super().__init__(daemon=True)
         self.token = token
         self.display_name = display_name
@@ -812,7 +810,7 @@ class TelegramBotWorker(threading.Thread):
                             print(f"ℹ️ [{self.display_name}] OPENAI_API_KEY 미설정 -> Groq 백업 가동", flush=True)
                         elif self.ai_engine == "anthropic" and not ANTHROPIC_API_KEY:
                             print(f"ℹ️ [{self.display_name}] ANTHROPIC_API_KEY 미설정 -> Groq 백업 가동", flush=True)
-                        ai_reply = call_groq(history_snapshot, self.system_prompt, "llama-3.3-70b-versatile")
+                        ai_reply = call_groq(history_snapshot, self.system_prompt, "qwen/qwen3.8-27b")
                     if ai_reply:
                         stripped_reply = ai_reply.strip().rstrip(".!?~ ")
                         if stripped_reply in ["제 담당이 아닙니다", "확인 불가", "제 담당이 아니에요", "제 소관이 아닙니다", "담당이 아닙니다"]:
@@ -846,7 +844,7 @@ def main():
     # 3. 1분 무료 채널 감시 데몬 가동 (0토큰 Diff 필터링)
     threading.Thread(target=zero_token_channel_monitor, daemon=True).start()
 
-    # 4. 덕영님 피클 봇 워커 시작 (토큰 있을 때만 가동 - Groq 초고속 Llama 3.1 8B 기본)
+    # 4. 덕영님 피클 봇 워커 시작 (토큰 있을 때만 가동 - Groq Qwen 27B 기본)
     if DEOKYEONG_BOT_TOKEN:
         worker_deokyeong = TelegramBotWorker(
             token=DEOKYEONG_BOT_TOKEN,
@@ -855,11 +853,11 @@ def main():
             trigger_keywords=["피클", "피클아", "덕영피클", "남편피클"],
             counterpart_username="pickle_trade_bot",
             ai_engine="groq",
-            ai_model="llama-3.1-8b-instant"
+            ai_model="qwen/qwen3.8-27b"
         )
         worker_deokyeong.start()
 
-    # 5. 아내분 피클 봇 워커 시작 (피키 - Groq 초고속 Llama 3.1 8B 기본)
+    # 5. 아내분 피클 봇 워커 시작 (피키 - Groq Qwen 27B 기본)
     if WIFE_BOT_TOKEN:
         worker_wife = TelegramBotWorker(
             token=WIFE_BOT_TOKEN,
@@ -868,7 +866,7 @@ def main():
             trigger_keywords=["피키", "피키야", "아내피클", "아내 피클", "연두피클", "연두 피클"],
             counterpart_username="pick_man_bot",
             ai_engine="groq",
-            ai_model="llama-3.1-8b-instant"
+            ai_model="qwen/qwen3.8-27b"
         )
         worker_wife.start()
 
