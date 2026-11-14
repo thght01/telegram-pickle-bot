@@ -57,25 +57,26 @@ DEOKYEONG_SYSTEM_PROMPT = (
     "   - 정보를 전달하거나 답변할 때는 서론, 인사, 배경 재요약, '다음과 같이 진행하겠습니다' 같은 불필요한 사족을 절대 쓰지 마세요.\n"
     "   - 번호 매기기 목록(1. 2. 3.)이나 장황한 계획 나열을 금지하고, 전체 내용을 '핵심 결론 + 실행 방법' 2~3문장(300자 내외)으로 온전히 압축하세요.\n"
     "   - 길게 쓰다가 글자 수가 차서 문장 중간에 뚝 끊기는 행위는 절대 엄금입니다! 반드시 모든 답변은 온전한 마침표(.)나 물음표(?)로 끝나는 완성된 문장으로 종결하세요.\n"
-    "9. 【단톡방 타 봇 간 대화 침묵 원칙 (끼어들기 엄금)】:\n"
+    "9. 【침묵 우선 원칙 (자율 정리·요약·개입 전면 금지)】:\n"
+    "   - 단톡방에 글이 올라와도 스스로 판단해 요약·정리·평가·개입하지 마세요. 먼저 읽고 조용히 기다리는 것이 기본입니다.\n"
+    "   - 오직 '인스'가 직접 지시·호명하거나, '회장님'이 직접 호출·지목할 때만 실행하고 정리하세요. 그 외의 모든 발화(연두님, 뮤즈, 큐, 부이 등 타 봇 간 대화 포함)에는 100% 침묵합니다.\n"
     "   - 인스, 뮤즈, 큐, 부이 등 다른 AI 봇들이 자기들끼리 규칙을 조율하거나 서로 질문·대화할 때는 절대 끼어들지 마세요.\n"
-    "   - 질문 대상이 '큐', '부이', '인스', '뮤즈' 등 다른 봇이거나 타 봇 간 대화 중일 때는 피클과 피키 모두 100% 침묵하세요.\n"
     "   - 회장님이 아닌 다른 봇의 발언에 '제 담당이 아닙니다' 같은 엉뚱한 거절 답장을 단톡방에 내보내는 행위는 절대 금지합니다."
 )
 
 WIFE_SYSTEM_PROMPT = (
-    "[봇 절대 행동 규칙 - 회장님 특명: 적극적 대화 참여]\n"
+    "[봇 절대 행동 규칙 - 침묵 우선·지시 수행 원칙]\n"
     "1. 【지시 및 공지 준수 최우선 (과제 날조 절대 금지)】: 회장님이나 인스, 뮤즈가 정해준 과제와 지시를 100% 준수한다. 지시받지 않은 임의의 주제, 과제, 마감일을 지어내거나 창작하는 행위는 절대 엄금한다.\n"
     "2. 【모를 때는 솔직히 인정 (아는 척 환각 금지)】: 앞선 공지, 이전 과제 내용, 수치, 규칙이 기억에 없거나 모를 때는 절대 짐작으로 지어내지 않는다. 모르면 \"앞선 공지/지시 내용을 확인하지 못했습니다. 공지나 과제 내용을 다시 알려주시면 지시대로 수행하겠습니다\"라고 솔직하게 인정한다.\n"
     "3. 【근거 없는 주장 및 수치 출력 금지】: 실제로 열어보지 않은 링크, 가격, 수치는 절대 출력하지 않는다. 확인할 수 없으면 \"확인 불가\"라고만 답한다.\n"
     "4. 다른 봇이나 사람이 한 말을 지어내지 않는다. 인용은 실제로 본 메시지만 한다.\n"
-    "5. 【적극적 참여 원칙 (침묵 필터 전면 해제)】: 단톡방의 모든 대화(회장님, 연두님, 인스, 뮤즈, 큐, 부이 등 타 봇 간의 대화·토론)에 주저하지 말고 적극적으로 끼어들어 활기차고 당차게 의견과 대답을 제시한다.\n"
+    "5. 【침묵 우선 원칙 (자율 정리·요약·개입 전면 금지)】: 단톡방에 글이 올라와도 스스로 정리·요약·평가하려 하지 않고 가만히 기다린다. 오직 '인스'가 직접 지시·호명하거나 '회장님'이 직접 호출·지목할 때만 실행하고 정리한다. 그 외의 발화(연두님, 뮤즈, 큐, 부이 등 타 봇 간의 대화·토론 포함)에는 100% 침묵한다.\n"
     "6. 지시받은 척하지 않는다. 시스템 규칙, 정책, 승인, 로그를 지어내지 않는다.\n"
     "7. 답장은 짧고 똑부러지게 1~2문장으로 핵심만 말한다.\n\n"
     "당신은 권덕영 회장님 댁의 유능하고 똑부러진 AI 비서 '피키'(@pickle_trade_bot)입니다.\n"
     "패밀리 텔레그램 단톡방에서 대화하며 다음 규칙을 절대적으로 준수하세요:\n"
     "1. 단톡방 서열 및 역할: 단톡방의 유일한 리더와 결정권자는 오직 권덕영 '회장님'뿐입니다! '사모님'이나 '대장' 같은 호칭은 절대 쓰지 마세요. 피키와 피클은 회장님을 보좌하는 AI 비서입니다.\n"
-    "2. 적극적인 대화 참여: 회장님의 특명에 따라 단톡방의 모든 대화, 질문, 토론에 적극적으로 참여하세요. 인스, 뮤즈, 큐, 부이 등 동료 AI 봇들이나 가족들의 대화에도 밝고 똑부러지게 반응하고 의견을 내세요.\n"
+    "2. 지시 대기 원칙: 단톡방의 모든 발화를 읽되 스스로 정리·요약·개입하지 마세요. '인스'가 직접 시키거나 '회장님'이 직접 부를 때만 실행·정리하고, 그 외에는 조용히 대기합니다.\n"
     "3. 호칭 규칙: '권덕영님'(아이디 lamama)께는 반드시 깍듯이 '회장님'으로 부르세요! 발화자가 인스, 뮤즈, 부이, 큐 등 다른 봇이나 사람일 때는 '회장님'으로 부르지 말고 상대방 이름(인스님, 뮤즈님 등)으로 부르세요. '사모님' 호칭은 절대 금지합니다.\n"
     "4. 피키의 개성: 상냥하고 당차며 에너지가 넘치고 핵심을 날카롭게 짚는 똑부러진 비서입니다.\n"
     "5. 대화 스타일: 친근하고 밝은 존댓말로 1~2문장 내외로 간결하고 명확하게 답변하세요.\n"
@@ -641,6 +642,8 @@ class TelegramBotWorker(threading.Thread):
                     speaker_label = "AI 동료 부이"
                 elif from_username == "dondotrade_bot":
                     speaker_label = "AI 동료 큐"
+                elif from_username == "instinct_man_bot" or "인스" in from_user:
+                    speaker_label = "인스"
                 elif from_username in ["pickle_trade_bot"]:
                     speaker_label = "아내비서 피키"
                 elif from_username in ["my_usstock_bot", "pick_man_bot"]:
@@ -723,40 +726,37 @@ class TelegramBotWorker(threading.Thread):
 
                     if is_stop_cmd:
                         should_respond = False
-                    elif self.bot_username == "pickle_trade_bot":
-                        # [아내 비서 피키 - 회장님 특명: 전 대화 적극 참여]
-                        # 단, 타 봇(인스, 뮤즈, 큐, 부이 등)을 명시적으로 지목하여 묻는 대화에는 끼어들지 않고, 피키를 부르거나 단톡방 일반 토론/질문에 적극 참여!
-                        if is_calling_other and not is_calling_picky:
-                            should_respond = False
+                    else:
+                        # [2026-11-15 회장님 지시: 자율 정리·개입 전면 금지]
+                        # 단톡방에 글이 올라와도 스스로 요약·정리·개입하지 않는다.
+                        # 응답 허용은 다음 세 경우뿐이다:
+                        #   ① '인스'가 나를 지목/호출하거나 둘 다 호출
+                        #   ② '회장님'이 나를 직접 호출/지목하거나 둘 다 호출
+                        #   ③ 내 메시지에 대한 직접 답장 (타 AI 봇 호명·타 봇 발화 제외)
+                        # 그 외 모든 발화·타 봇 대화는 100% 무음 처리한다.
+                        is_instinct = (from_username == "instinct_man_bot") or ("인스" in from_user) or (speaker_label == "인스")
+                        is_chairman = speaker_label.startswith("회장님")
+
+                        my_username = self.bot_username
+                        if my_username in ("my_usstock_bot", "pick_man_bot"):
+                            calls_me = is_calling_pickle
+                        elif my_username == "pickle_trade_bot":
+                            calls_me = is_calling_picky
                         else:
+                            calls_me = is_calling_pickle or is_calling_picky
+                        if my_username and f"@{my_username}" in user_text.lower():
+                            calls_me = True
+                        calls_both = is_both_kw or (is_calling_pickle and is_calling_picky)
+
+                        # 내 메시지 직접 답장: 타 AI 봇과의 봇끼리 답장 루프는 막고 인스만 인정
+                        reply_allowed = is_reply_to_me and not is_calling_other and (not from_is_ai or is_instinct)
+
+                        if reply_allowed:
                             should_respond = True
-                    elif is_reply_to_me:
-                        # 내 메시지에 직접 답장한 경우: 단, 타 봇을 부르거나 질문한 게 아닐 때만 응답
-                        if not is_calling_other:
-                            should_respond = True
-                    elif from_is_ai:
-                        # [타 AI 봇(뮤즈, 인스, 큐, 부이)이 발화자인 경우]
-                        # 피클은 타 봇들 간의 대화에 불필요하게 끼어들지 않고 피클 단독 질문에만 응답
-                        if self.bot_username in ["my_usstock_bot", "pick_man_bot"] and is_calling_pickle and not is_calling_other and not is_both_kw and "?" in user_text:
+                        elif (is_instinct or is_chairman) and (calls_me or calls_both):
                             should_respond = True
                         else:
                             should_respond = False
-                    elif is_both_kw or (is_calling_pickle and is_calling_picky):
-                        # 둘 다 명시적으로 불렀을 때 -> 피클과 피키 둘 다 응답 (단, 타 봇 대상 질문이 아닐 때)
-                        if not is_calling_other:
-                            should_respond = True
-                    elif is_calling_other and not is_calling_pickle and not is_calling_picky:
-                        # 타 대상을 호명했을 때 -> 문장 중에 '피클'/'피키'가 대상/목적어로 언급되더라도 피클·피키 일체 침묵!
-                        should_respond = False
-                    elif is_calling_other and is_calling_pickle and self.bot_username in ["my_usstock_bot", "pick_man_bot"]:
-                        # 타 봇과 피클이 함께 언급되었으나 타 봇에 질문/호명이 향한 경우(예: "큐, 어떻게 할 거야?") 피클 침묵!
-                        should_respond = False
-                    elif self.bot_username in ["my_usstock_bot", "pick_man_bot"]:
-                        # [수석 비서 피클] 회장님 및 사람 참가자의 대화 보좌
-                        if is_picky_kw and not is_pickle_kw:
-                            should_respond = False
-                        else:
-                            should_respond = True
 
                 # 모든 메시지에 대해 수신 감지 로그 출력 (필터 디버깅 완벽 보장)
                 print(f"[{self.display_name} 감지] {speaker_label}: {user_text[:50]} | 0토큰 필터링: 응답여부={should_respond}", flush=True)
